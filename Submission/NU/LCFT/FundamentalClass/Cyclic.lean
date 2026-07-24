@@ -1490,6 +1490,7 @@ theorem cyclic_local_herbrand :
   letI : Subsingleton (TateLowDegree.HMinusOne T) :=
     trivialHMinusOne_subsingleton
   letI : Finite (TateLowDegree.HMinusOne T) := Finite.of_subsingleton
+  letI : NeZero (Nat.card (L ≃ₐ[K] L)) := ⟨Nat.card_pos.ne'⟩
   letI : Finite (TateLowDegree.H0 T) :=
     Finite.of_equiv (ZMod (Nat.card (L ≃ₐ[K] L)))
       trivialH0EquivZMod.symm.toEquiv
