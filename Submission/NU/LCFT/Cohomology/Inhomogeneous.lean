@@ -706,7 +706,6 @@ noncomputable def corestrictionComparison (S : Subgroup G) [S.FiniteIndex] (M : 
       rw [← Category.assoc]
       erw [groupCohomology.coindIso_inv_δ_res S hX]
     slice_lhs 2 3 => erw [coindCounit_connecting S X hX]
-    rfl
 
 /-- Existence wrapper for the named corestriction comparison data. -/
 theorem corestrictionComparison_exists (S : Subgroup G) [S.FiniteIndex] (M : Rep ℤ G) :
