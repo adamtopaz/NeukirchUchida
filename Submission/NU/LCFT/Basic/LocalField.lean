@@ -593,14 +593,14 @@ theorem ramificationInvariants_exists :
       IsDiscreteValuationRing.coheight_pow_maximalIdeal] at hc
     have : e = e + 1 := by exact_mod_cast hc
     omega
-  have hram : p.ramificationIdx' P = e := Ideal.ramificationIdx'_spec hmap.le hnot
+  have hram : p.ramificationIdx P = e := Ideal.ramificationIdx_spec hmap.le hnot
   have hp0 : p ≠ ⊥ := by
     rw [hp, ne_eq, Ideal.span_singleton_eq_bot]
     exact hϖKirr.ne_zero
   have hdegree := Ideal.ramificationIdx_mul_inertiaDeg_of_isLocalRing
     (S := 𝒪[L]) K L (p := p) hp0
-  let f := p.inertiaDeg' P
-  have hf : 0 < f := Ideal.inertiaDeg'_pos p P
+  let f := p.inertiaDeg P
+  have hf : 0 < f := Ideal.inertiaDeg_pos p P
   refine ⟨e, f, he, hf, ?_, ?_⟩
   · intro x
     rw [hecast]
@@ -1301,11 +1301,15 @@ private theorem finiteExtension_localFieldData_exists
     Valuation.Compatible.ofValuation (NormedField.valuation (K := L))
   letI : TopologicalSpace L := tL
   letI : Valued L NNReal := NormedField.toValued
+  haveI : (Valued.v : Valuation L NNReal).Compatible := by
+    rw [show (Valued.v : Valuation L NNReal) = NormedField.valuation from rfl]
+    infer_instance
   haveI htop : IsValuativeTopology L := by
-    apply IsValuativeTopology.of_mem_nhds_zero_iff_vle (NormedField.valuation (K := L))
-    have hv : (Valued.v : Valuation L NNReal) = NormedField.valuation := rfl
-    rw [← hv]
-    exact Valued.is_topological_valuation
+    apply IsValuativeTopology.of_zero
+    intro s
+    rw [Valued.is_topological_valuation s]
+    simpa using
+      (Valued.v : Valuation L NNReal).exists_setOf_restrict_le_iff 0 s
   haveI hloc : LocallyCompactSpace L :=
     LocallyCompactSpace.of_finiteDimensional_of_complete F L
   haveI hnontriv : ValuativeRel.IsNontrivial L := by
@@ -1526,18 +1530,18 @@ private theorem unramifiedLevelSeed_isUnramified [IsSepClosure K Ksep]
           simpa using hcx }
   have hupper : Module.finrank k kU ≤ Module.finrank K U := by
     have h := Ideal.inertiaDeg_le_finrank (S := 𝒪[U]) K U P hp0
-    rw [Ideal.inertiaDeg'_algebraMap] at h
+    rw [Ideal.inertiaDeg_algebraMap] at h
     exact h
   have hres : Module.finrank k kU = d := by
     apply le_antisymm
     · exact hupper.trans_eq (unramifiedLevelSeed_finrank K Ksep S)
     · exact hlower
-  have hinertia : p.inertiaDeg' P = d := by
-    rw [Ideal.inertiaDeg'_algebraMap]
+  have hinertia : p.inertiaDeg P = d := by
+    rw [Ideal.inertiaDeg_algebraMap]
     exact hres
   have hdegree := Ideal.ramificationIdx_mul_inertiaDeg_of_isLocalRing
     (S := 𝒪[U]) K U (p := p) hp0
-  have hramification : p.ramificationIdx' P = 1 := by
+  have hramification : p.ramificationIdx P = 1 := by
     rw [hinertia, unramifiedLevelSeed_finrank K Ksep S] at hdegree
     apply Nat.eq_of_mul_eq_mul_right hd
     simpa using hdegree
@@ -1569,8 +1573,8 @@ private theorem unramifiedLevelSeed_isUnramified [IsSepClosure K Ksep]
       IsDiscreteValuationRing.coheight_pow_maximalIdeal] at hc
     have : n = n + 1 := by exact_mod_cast hc
     omega
-  have hnram : p.ramificationIdx' P = n :=
-    Ideal.ramificationIdx'_spec hmap.le hnot
+  have hnram : p.ramificationIdx P = n :=
+    Ideal.ramificationIdx_spec hmap.le hnot
   have hn : n = 1 := hnram ▸ hramification
   let xu : Units U := Units.map (algebraMap 𝒪[U] U) unit
   have hfacUnits : Units.map (algebraMap K U) (defaultUniformizer K).val =
@@ -1753,8 +1757,8 @@ private theorem residue_finrank_eq_finrank_of_unramified
       IsDiscreteValuationRing.coheight_pow_maximalIdeal,
       IsDiscreteValuationRing.coheight_pow_maximalIdeal] at hc
     norm_num at hc
-  have hram : p.ramificationIdx' P = 1 := by
-    apply Ideal.ramificationIdx'_spec (by simpa using hmap.le)
+  have hram : p.ramificationIdx P = 1 := by
+    apply Ideal.ramificationIdx_spec (by simpa using hmap.le)
     simpa only [one_add_one_eq_two] using hnot
   have hdegree := Ideal.ramificationIdx_mul_inertiaDeg_of_isLocalRing
     (S := 𝒪[E]) K E (p := p) (by
@@ -1762,8 +1766,8 @@ private theorem residue_finrank_eq_finrank_of_unramified
       exact hϖKirr.ne_zero)
   rw [hram, one_mul] at hdegree
   calc
-    Module.finrank (LocalResidueField K) (LocalResidueField E) = p.inertiaDeg' P := by
-      rw [Ideal.inertiaDeg'_algebraMap]
+    Module.finrank (LocalResidueField K) (LocalResidueField E) = p.inertiaDeg P := by
+      rw [Ideal.inertiaDeg_algebraMap]
       rfl
     _ = Module.finrank K E := hdegree
 
@@ -2371,7 +2375,7 @@ private theorem unramifiedLevelSeed_residueRingEquiv_injective [IsSepClosure K K
   have hO : σO og = τO og :=
     unramifiedLift_root_unique K Ksep S U hU (σO og) (τO og)
       hσroot hτroot hres
-  apply AlgEquiv.coe_toAlgHom_injective
+  apply AlgEquiv.coe_algHom_injective
   apply (IntermediateField.adjoin.powerBasis
     (Algebra.IsIntegral.isIntegral S.root)).algHom_ext
   exact congr_arg Subtype.val hO
@@ -2489,6 +2493,10 @@ private theorem unramifiedLevelFrobeniusDatum_exists [IsSepClosure K Ksep]
     intro σ τ hστ
     apply unramifiedLevelSeed_residueRingEquiv_injective K Ksep S
     exact congr_arg AlgEquiv.toRingEquiv hστ
+  letI : Fintype (kU ≃ₐ[k] kU) := AlgEquiv.fintype k kU
+  letI : Fintype (U ≃ₐ[K] U) := AlgEquiv.fintype K U
+  letI : Finite (kU ≃ₐ[k] kU) := Finite.of_fintype _
+  letI : Finite (U ≃ₐ[K] U) := Finite.of_fintype _
   have hcard : Nat.card (kU ≃ₐ[k] kU) = Nat.card (U ≃ₐ[K] U) := by
     rw [IsGalois.card_aut_eq_finrank, IsGalois.card_aut_eq_finrank,
       residue_finrank_eq_finrank_of_unramified K Ksep U hU]
