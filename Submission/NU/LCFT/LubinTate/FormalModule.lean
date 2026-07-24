@@ -1556,6 +1556,8 @@ private noncomputable def canonicalLubinTateFormalModule (π : Uniformizer K) :
   map_mul := lubinTateEndomorphismSeries_mul K π
   uniformizer_action := lubinTateEndomorphismSeries_uniformizer K π
 
+variable (π : Uniformizer K)
+
 private theorem LubinTateFormalModule.formalGroup_discrepancy
     (G : LubinTateFormalModule K π) :
     lubinTateDiscrepancy K π G.formalGroup.toPowerSeries = 0 := by
