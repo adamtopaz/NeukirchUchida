@@ -1154,8 +1154,7 @@ private noncomputable def cyclotomicCharEvalEquivRoots
       rw [Fintype.card_eq_nat_card, Fintype.card_eq_nat_card,
         CommGroup.card_monoidHom_of_hasEnoughRootsOfUnity,
         Nat.card_zpowers]
-      let ζ := (HasEnoughRootsOfUnity.exists_primitiveRoot ℂ (orderOf a)).choose
-      exact (HasEnoughRootsOfUnity.exists_primitiveRoot ℂ (orderOf a)).choose_spec.card_rootsOfUnity.symm⟩)
+      exact (HasEnoughRootsOfUnity.natCard_rootsOfUnity ℂ (orderOf a)).symm⟩)
 
 
 private theorem cyclotomic_prod_rootsOfUnity_one_sub (d : ℕ) [NeZero d] [Fintype (rootsOfUnity d ℂ)] (z : ℂ) :
@@ -1400,7 +1399,7 @@ private theorem cyclotomicLocalEulerFactor
       exact cyclotomicIdealMap_on_prime
         (M := M) (F := F) n m hn hmod hram p hp c hc Q₀ hQ₀p
     have haorder : orderOf a =
-        Q₀.asIdeal.inertiaDeg (NumberField.RingOfIntegers K) := by
+        (Q₀.asIdeal.under (NumberField.RingOfIntegers K)).inertiaDeg Q₀.asIdeal := by
       rw [← arithFrobAt_order_eq_inertiaDeg Q₀ hQ₀unr, ← ha]
       exact (orderOf_injective A.subtype A.subtype_injective a).symm
     let B := Subgroup.zpowers a
@@ -1413,8 +1412,11 @@ private theorem cyclotomicLocalEulerFactor
       rw [PrimeIdeal.norm_pow_inertiaDeg Q.1 p hQp, haorder]
       letI : Q.1.asIdeal.LiesOver p.asIdeal := hQp
       letI : Q₀.asIdeal.LiesOver p.asIdeal := hQ₀p
-      rw [Ideal.inertiaDeg_eq_of_isGaloisGroup p.asIdeal Q.1.asIdeal Q₀.asIdeal
-        (Gal(M/K))]
+      rw [Ideal.inertiaDeg_eq_inertiaDeg' p.asIdeal Q.1.asIdeal,
+        Ideal.inertiaDeg_eq_inertiaDeg'
+          (Q₀.asIdeal.under (NumberField.RingOfIntegers K)) Q₀.asIdeal,
+        Ideal.inertiaDeg_eq_of_isGaloisGroup p.asIdeal Q.1.asIdeal Q₀.asIdeal
+          (Gal(M/K))]
     have hzpow : Complex.cpow (PrimeIdeal.norm p : ℂ) (-s) ^ orderOf a =
         Complex.cpow ((PrimeIdeal.norm p ^ orderOf a : ℕ) : ℂ) (-s) := by
       calc
@@ -1432,13 +1434,19 @@ private theorem cyclotomicLocalEulerFactor
         p.asIdeal (NumberField.RingOfIntegers M) (Gal(M/K))
       have hramidx : p.asIdeal.ramificationIdxIn
           (NumberField.RingOfIntegers M) = 1 := by
-        rw [Ideal.ramificationIdxIn_eq_ramificationIdx p.asIdeal Q₀.asIdeal (Gal(M/K))]
+        rw [Ideal.ramificationIdxIn_eq_ramificationIdx p.asIdeal Q₀.asIdeal (Gal(M/K)),
+          ← Ideal.ramificationIdx_eq_ramificationIdx'
+            (Q₀.asIdeal.under (NumberField.RingOfIntegers K)) Q₀.asIdeal
+            (Ideal.under_ne_bot (NumberField.RingOfIntegers K) Q₀.ne_bot)]
         letI : Algebra.IsUnramifiedAt
             (NumberField.RingOfIntegers K) Q₀.asIdeal := hQ₀unr
-        exact Ideal.ramificationIdx_eq_one_of_isUnramifiedAt
+        exact Ideal.ramificationIdx_eq_one_of_isUnramifiedAt Q₀.ne_bot
       have hinertia : p.asIdeal.inertiaDegIn
           (NumberField.RingOfIntegers M) = orderOf a := by
-        rw [Ideal.inertiaDegIn_eq_inertiaDeg p.asIdeal Q₀.asIdeal (Gal(M/K)), haorder]
+        rw [Ideal.inertiaDegIn_eq_inertiaDeg p.asIdeal Q₀.asIdeal (Gal(M/K)),
+          ← Ideal.inertiaDeg_eq_inertiaDeg'
+            (Q₀.asIdeal.under (NumberField.RingOfIntegers K)) Q₀.asIdeal,
+          haorder]
       rw [hramidx, hinertia, one_mul] at hfund
       have hfund' : Fintype.card
           {Q : PrimeIdeal M // cyclotomicContractPrime (K := K) Q = p} * orderOf a =
