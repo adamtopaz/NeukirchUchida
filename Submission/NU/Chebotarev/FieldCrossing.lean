@@ -34,8 +34,8 @@ private theorem fieldCrossing_absolute_cyclotomic_tensor_isDomain
   let g : C →ₐ[ℚ] Ω := IsAlgClosed.lift
   let A : IntermediateField ℚ Ω := f.fieldRange
   let B : IntermediateField ℚ Ω := g.fieldRange
-  let eA : L ≃ₐ[ℚ] A := AlgHom.equivFieldRange f
-  let eB : C ≃ₐ[ℚ] B := AlgHom.equivFieldRange g
+  let eA : L ≃ₐ[ℚ] A := f.equivFieldRange
+  let eB : C ≃ₐ[ℚ] B := g.equivFieldRange
   letI : FiniteDimensional ℚ A := eA.toLinearEquiv.finiteDimensional
   letI : FiniteDimensional ℚ B := eB.toLinearEquiv.finiteDimensional
   let U : IntermediateField ℚ Ω := A ⊔ B
@@ -47,8 +47,8 @@ private theorem fieldCrossing_absolute_cyclotomic_tensor_isDomain
   let gU : C →ₐ[ℚ] U := iB.comp eB.toAlgHom
   let A' : IntermediateField ℚ U := fU.fieldRange
   let B' : IntermediateField ℚ U := gU.fieldRange
-  let eA' : L ≃ₐ[ℚ] A' := AlgHom.equivFieldRange fU
-  let eB' : C ≃ₐ[ℚ] B' := AlgHom.equivFieldRange gU
+  let eA' : L ≃ₐ[ℚ] A' := fU.equivFieldRange
+  let eB' : C ≃ₐ[ℚ] B' := gU.equivFieldRange
   letI : IsCyclotomicExtension {p} ℚ C := by
     dsimp [C]
     exact CyclotomicField.isCyclotomicExtension p ℚ
@@ -284,7 +284,7 @@ private theorem fieldCrossing_pair_algebraic
     calc
       Nat.card Gal(N/K) ≤ Nat.card (N →ₐ[K] N) :=
         Nat.card_le_card_of_injective (fun e : Gal(N/K) => e.toAlgHom)
-          AlgEquiv.coe_toAlgHom_injective
+          AlgEquiv.coe_algHom_injective
       _ ≤ Module.finrank K N := card_algHom_le_finrank K N N
   have hfin : Module.finrank K N =
       Module.finrank K L * Module.finrank K M := Module.finrank_tensorProduct
