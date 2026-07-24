@@ -448,8 +448,13 @@ private lemma reverseLinear_mk (g : G) (a : A) :
     Representation.IndV.mk (botS S).subtype (BS (A := A) S).ρ (s S g)
       (Finsupp.single (q S g) a) := by
   change reverseAux (A := A) S ((MonoidAlgebra.single g (1 : ℤ) : MonoidAlgebra ℤ G) ⊗ₜ[ℤ] a) = _
-  simp [reverseAux, Representation.IndV.mk, singleLinear]
-  rfl
+  set_option backward.isDefEq.respectTransparency false in
+    simp only [reverseAux, TensorProduct.lift.tmul, LinearMap.comp_apply]
+    have hcoeff :
+        (MonoidAlgebra.coeffLinearEquiv ℤ).toLinearMap
+            (MonoidAlgebra.single g 1 : MonoidAlgebra ℤ G) = Finsupp.single g 1 := rfl
+    rw [hcoeff, Finsupp.linearCombination_single, one_smul]
+    rfl
 
 private def reverse : N (A := A) S ⟶ Rep.ind (botS S).subtype (BS (A := A) S) :=
   Rep.ofHom ⟨reverseLinear (A := A) S, fun h => by
@@ -459,10 +464,18 @@ private def reverse : N (A := A) S ⟶ Rep.ind (botS S).subtype (BS (A := A) S) 
     | h z =>
       induction z using TensorProduct.induction_on with
       | zero => simp
-      | add x y hx hy => simpa using congrArg₂ (· + ·) hx hy
+      | add x y hx hy =>
+        rw [map_add, map_add, map_add]
+        exact congrArg₂ (· + ·) hx hy
       | tmul f a =>
-        induction f using MonoidAlgebra.induction_on with
-        | hM g =>
+        induction f using Finsupp.induction_linear with
+        | zero => simp
+        | add x y hx hy => simpa [TensorProduct.add_tmul] using congrArg₂ (· + ·) hx hy
+        | single g n =>
+          rw [show Finsupp.single g n = n • Finsupp.single g (1 : ℤ) by simp,
+            ← TensorProduct.smul_tmul']
+          simp only [map_smul]
+          congr 1
           change reverseLinear (A := A) S
               ((N (A := A) S).ρ h
                 (Representation.IndV.mk (botG (G := G)).subtype
@@ -482,10 +495,6 @@ private def reverse : N (A := A) S ⟶ Rep.ind (botS S).subtype (BS (A := A) S) 
           rw [Representation.ind_mk, reverseLinear_mk, reverseLinear_mk,
             Representation.ind_mk]
           rw [show (h : G)⁻¹ = (h⁻¹ : S) by rfl, s_mul, q_mul]
-        | hadd x y hx hy => simpa [add_tmul] using congrArg₂ (· + ·) hx hy
-        | hsmul n x hx =>
-          convert congrArg (n • ·) hx using 1 <;>
-            simp only [← Algebra.smul_def, ← smul_tmul', map_smul]
     ⟩
 
 @[simp]
@@ -515,10 +524,18 @@ private def resIndIso : N (A := A) S ≅
     | h z =>
       induction z using TensorProduct.induction_on with
       | zero => simp
-      | add x y hx hy => simpa using congrArg₂ (· + ·) hx hy
+      | add x y hx hy =>
+        rw [map_add, map_add, map_add]
+        exact congrArg₂ (· + ·) hx hy
       | tmul f b =>
-        induction f using MonoidAlgebra.induction_on with
-        | hM h =>
+        induction f using Finsupp.induction_linear with
+        | zero => simp
+        | add x y hx hy => simpa [TensorProduct.add_tmul] using congrArg₂ (· + ·) hx hy
+        | single h n =>
+          rw [show Finsupp.single h n = n • Finsupp.single h (1 : ℤ) by simp,
+            ← TensorProduct.smul_tmul']
+          simp only [map_smul]
+          congr 1
           change (reverse (A := A) S).hom
               ((forward (A := A) S).hom
                 (Representation.IndV.mk (botS S).subtype (BS (A := A) S).ρ h b)) =
@@ -551,10 +568,6 @@ private def resIndIso : N (A := A) S ≅
             rw [Representation.ind_mk]
             rw [show ((h⁻¹ : S) : G)⁻¹ = (h : G) by simp]
             rw [reverseLinear_mk, q_mul, q_r, s_mul, s_r, one_mul]
-        | hadd x y hx hy => simpa [add_tmul] using congrArg₂ (· + ·) hx hy
-        | hsmul n x hx =>
-          convert congrArg (n • ·) hx using 1 <;>
-            simp only [← Algebra.smul_def, ← smul_tmul', map_smul]
   have hleft : ∀ z : (N (A := A) S).V,
       (forward (A := A) S).hom ((reverse (A := A) S).hom z) = z := by
     intro z
@@ -562,10 +575,18 @@ private def resIndIso : N (A := A) S ≅
     | h z =>
       induction z using TensorProduct.induction_on with
       | zero => simp
-      | add x y hx hy => simpa using congrArg₂ (· + ·) hx hy
+      | add x y hx hy =>
+        rw [map_add, map_add, map_add]
+        exact congrArg₂ (· + ·) hx hy
       | tmul f a =>
-        induction f using MonoidAlgebra.induction_on with
-        | hM g =>
+        induction f using Finsupp.induction_linear with
+        | zero => simp
+        | add x y hx hy => simpa [TensorProduct.add_tmul] using congrArg₂ (· + ·) hx hy
+        | single g n =>
+          rw [show Finsupp.single g n = n • Finsupp.single g (1 : ℤ) by simp,
+            ← TensorProduct.smul_tmul']
+          simp only [map_smul]
+          congr 1
           change (forward (A := A) S).hom
               (reverseLinear (A := A) S
                 (Representation.IndV.mk (botG (G := G)).subtype
@@ -581,10 +602,6 @@ private def resIndIso : N (A := A) S ≅
                 (AG (G := G) (A := A)).ρ (r S (q S g)) a) = _
           rw [Representation.ind_mk]
           rw [show (((s S g)⁻¹ : S) : G)⁻¹ = (s S g : G) by simp, r_mul_s]
-        | hadd x y hx hy => simpa [add_tmul] using congrArg₂ (· + ·) hx hy
-        | hsmul n x hx =>
-          convert congrArg (n • ·) hx using 1 <;>
-            simp only [← Algebra.smul_def, ← smul_tmul', map_smul]
   let e : (N (A := A) S).V ≃ₗ[ℤ]
       (Rep.ind (botS S).subtype (BS (A := A) S)).V :=
     LinearEquiv.ofBijective (reverse (A := A) S).hom.toLinearMap
@@ -838,31 +855,28 @@ lemma barAugmentationSequence_shortExact : (barAugmentationSequence G).ShortExac
 variable (M : Rep.{0} ℤ G)
 
 private def cocycleTwistRegular (a : G → G → M) (g : G) : barRegular G →+ M :=
-  (Finsupp.liftAddHom fun h => (smulAddHom ℤ M).flip (a g h)).comp
-    MonoidAlgebra.coeffAddEquiv.toAddMonoidHom
+  Finsupp.liftAddHom fun h => (smulAddHom ℤ M).flip (a g h)
 
 @[simp] private lemma cocycleTwistRegular_single (a : G → G → M) (g h : G) (n : ℤ) :
     cocycleTwistRegular M a g (MonoidAlgebra.single h n) = n • a g h := by
-  simp [cocycleTwistRegular]
+  rw [cocycleTwistRegular, Finsupp.liftAddHom_apply_single]
+  rfl
 
 private lemma cocycleTwistRegular_cocycle (a : G → G → M)
     (ha2 : NU.LCFT.Inhomogeneous.d2 M a = 0) (g h : G) (z : barRegular G) :
     cocycleTwistRegular M a (g * h) z + (barAugmentation G).hom z • a g h =
       M.ρ g (cocycleTwistRegular M a h z) + cocycleTwistRegular M a g ((barRegular G).ρ h z) := by
-  rw [← MonoidAlgebra.ofCoeff_coeff z]
-  generalize z.coeff = q
-  induction q using Finsupp.induction with
+  induction z using Finsupp.induction with
   | zero => simp
   | single_add t n q htn hn ih =>
       have hsingle :
-          cocycleTwistRegular M a (g * h) (MonoidAlgebra.ofCoeff (Finsupp.single t n)) +
-              (barAugmentation G).hom (MonoidAlgebra.ofCoeff (Finsupp.single t n)) • a g h =
-            M.ρ g (cocycleTwistRegular M a h (MonoidAlgebra.ofCoeff (Finsupp.single t n))) +
-              cocycleTwistRegular M a g ((barRegular G).ρ h
-                (MonoidAlgebra.ofCoeff (Finsupp.single t n))) := by
-        rw [MonoidAlgebra.ofCoeff_single, cocycleTwistRegular_single, barAugmentation_single,
-          cocycleTwistRegular_single, Representation.ofMulAction_single, cocycleTwistRegular_single, map_zsmul,
-          smul_eq_mul]
+          cocycleTwistRegular M a (g * h) (Finsupp.single t n) +
+              (barAugmentation G).hom (Finsupp.single t n) • a g h =
+            M.ρ g (cocycleTwistRegular M a h (Finsupp.single t n)) +
+              cocycleTwistRegular M a g ((barRegular G).ρ h (Finsupp.single t n)) := by
+        rw [cocycleTwistRegular_single, barAugmentation_single,
+          cocycleTwistRegular_single, Representation.ofMulAction_single,
+          cocycleTwistRegular_single, map_zsmul, smul_eq_mul]
         have hc := congrFun (congrFun (congrFun ha2 g) h) t
         change M.ρ g (a h t) - a (g * h) t + a g (h * t) - a g h = 0 at hc
         have hn := congrArg (n • ·) hc
@@ -876,19 +890,17 @@ private lemma cocycleTwistRegular_cocycle (a : G → G → M)
             -(n • M.ρ g (a h t) - n • a (g * h) t +
               n • a g (h * t) - n • a g h) := by abel
           _ = 0 := by rw [hn', neg_zero]
-      rw [MonoidAlgebra.ofCoeff_add]
       calc
-        _ = (cocycleTwistRegular M a (g * h) (MonoidAlgebra.ofCoeff (Finsupp.single t n)) +
-              (barAugmentation G).hom (MonoidAlgebra.ofCoeff (Finsupp.single t n)) • a g h) +
-            (cocycleTwistRegular M a (g * h) (MonoidAlgebra.ofCoeff q) +
-              (barAugmentation G).hom (MonoidAlgebra.ofCoeff q) • a g h) := by
+        _ = (cocycleTwistRegular M a (g * h) (Finsupp.single t n) +
+              (barAugmentation G).hom (Finsupp.single t n) • a g h) +
+            (cocycleTwistRegular M a (g * h) q +
+              (barAugmentation G).hom q • a g h) := by
           rw [map_add, map_add, add_zsmul]
           abel
-        _ = (M.ρ g (cocycleTwistRegular M a h (MonoidAlgebra.ofCoeff (Finsupp.single t n))) +
-              cocycleTwistRegular M a g ((barRegular G).ρ h
-                (MonoidAlgebra.ofCoeff (Finsupp.single t n)))) +
-            (M.ρ g (cocycleTwistRegular M a h (MonoidAlgebra.ofCoeff q)) +
-              cocycleTwistRegular M a g ((barRegular G).ρ h (MonoidAlgebra.ofCoeff q))) :=
+        _ = (M.ρ g (cocycleTwistRegular M a h (Finsupp.single t n)) +
+              cocycleTwistRegular M a g ((barRegular G).ρ h (Finsupp.single t n))) +
+            (M.ρ g (cocycleTwistRegular M a h q) +
+              cocycleTwistRegular M a g ((barRegular G).ρ h q)) :=
           congrArg₂ (· + ·) hsingle ih
         _ = _ := by
           simp only [map_add]
@@ -913,13 +925,10 @@ private lemma cocycleTwist_eq_zero (a : G → G → M) (g : G) (hg : ∀ t, a g 
   apply AddMonoidHom.ext
   intro x
   change cocycleTwistRegular M a g ((barAugmentationInclusion G).hom x) = 0
-  rw [← MonoidAlgebra.ofCoeff_coeff ((barAugmentationInclusion G).hom x)]
-  generalize ((barAugmentationInclusion G).hom x).coeff = q
-  induction q using Finsupp.induction with
+  induction ((barAugmentationInclusion G).hom x) using Finsupp.induction with
   | zero => simp
   | single_add t n q htn hn ih =>
-      rw [MonoidAlgebra.ofCoeff_add, map_add, ih, add_zero,
-        MonoidAlgebra.ofCoeff_single, cocycleTwistRegular_single, hg, smul_zero]
+      rw [map_add, ih, add_zero, cocycleTwistRegular_single, hg, smul_zero]
 
 def cocyclePushout (a : G → G → M)
     (ha : a ∈ NU.LCFT.Inhomogeneous.cocycles2 M) : Rep ℤ G := by
@@ -1087,9 +1096,9 @@ lemma cocyclePushoutSequence_shortExact (a : G → G → M)
 
 /-- The standard augmentation-ideal element `[g] - [1]`. -/
 def barAugmentationCocycle (g : G) : barAugmentationIdeal G :=
-  ⟨MonoidAlgebra.single g 1 - MonoidAlgebra.single 1 1, by
+  ⟨Finsupp.single g 1 - Finsupp.single 1 1, by
     change (barAugmentation G).hom
-      (MonoidAlgebra.single g 1 - MonoidAlgebra.single 1 1) = 0
+      (Finsupp.single g 1 - Finsupp.single 1 1) = 0
     rw [map_sub, barAugmentation_single, barAugmentation_single, sub_self]⟩
 
 @[simp]
@@ -1097,7 +1106,7 @@ lemma cocycleTwist_barAugmentationCocycle (a : G → G → M)
     (ha : a ∈ Inhomogeneous.cocycles2 M) (g h : G) :
     cocycleTwist M a g (barAugmentationCocycle h) = a g h := by
   change cocycleTwistRegular M a g
-    (MonoidAlgebra.single h 1 - MonoidAlgebra.single 1 1) = a g h
+    (Finsupp.single h 1 - Finsupp.single 1 1) = a g h
   rw [map_sub, cocycleTwistRegular_single, cocycleTwistRegular_single,
     one_zsmul, one_zsmul, ha.2.2 g, sub_zero]
 
@@ -1107,9 +1116,9 @@ lemma barAugmentationCocycle_action (g h : G) :
       barAugmentationCocycle (g * h) - barAugmentationCocycle g := by
   apply Subtype.ext
   change (barRegular G).ρ g
-      (MonoidAlgebra.single h 1 - MonoidAlgebra.single 1 1) =
-    (MonoidAlgebra.single (g * h) 1 - MonoidAlgebra.single 1 1) -
-      (MonoidAlgebra.single g 1 - MonoidAlgebra.single 1 1)
+      (Finsupp.single h 1 - Finsupp.single 1 1) =
+    (Finsupp.single (g * h) 1 - Finsupp.single 1 1) -
+      (Finsupp.single g 1 - Finsupp.single 1 1)
   rw [map_sub, Representation.ofMulAction_single,
     Representation.ofMulAction_single]
   simp [smul_eq_mul]
@@ -1364,7 +1373,7 @@ private lemma comparisonH0Tate_mk_eq_homologyπ (N : Rep ℤ G)
   exact (tateComplex N).i_cyclesMk _ _ _ _
 
 private def firstBarLift (g : G) : G →₀ barRegular G :=
-  Finsupp.single g (MonoidAlgebra.single 1 1) +
+  Finsupp.single g (Finsupp.single 1 1) +
     Finsupp.single g⁻¹ (barAugmentationCocycle g⁻¹).1
 
 private lemma firstBarLift_projection (g : G) :
@@ -1372,7 +1381,7 @@ private lemma firstBarLift_projection (g : G) :
       Finsupp.single g 1 := by
   rw [firstBarLift, map_add]
   simp only [Finsupp.mapRange.linearMap_apply, Finsupp.mapRange_single]
-  change Finsupp.single g ((barAugmentation G).hom (MonoidAlgebra.single 1 1)) +
+  change Finsupp.single g ((barAugmentation G).hom (Finsupp.single 1 1)) +
     Finsupp.single g⁻¹ ((barAugmentation G).hom (barAugmentationCocycle g⁻¹).1) = _
   rw [barAugmentation_single]
   have hzero : (barAugmentation G).hom (barAugmentationCocycle g⁻¹).1 = 0 :=
@@ -1390,18 +1399,18 @@ private lemma firstBarLift_boundary (g : G) :
   have hact' : (barRegular G).ρ g (barAugmentationCocycle g⁻¹).1 =
       (-barAugmentationCocycle g).1 := by
     simpa [barAugmentationCocycle] using hact
-  change (barRegular G).ρ g⁻¹ (MonoidAlgebra.single 1 1) -
-      MonoidAlgebra.single 1 1 +
+  change (barRegular G).ρ g⁻¹ (Finsupp.single 1 1) -
+      Finsupp.single 1 1 +
       ((barRegular G).ρ g (barAugmentationCocycle g⁻¹).1 -
         (barAugmentationCocycle g⁻¹).1) =
     (-barAugmentationCocycle g).1
   rw [hact']
-  change (barRegular G).ρ g⁻¹ (MonoidAlgebra.single 1 1) -
-      MonoidAlgebra.single 1 1 +
+  change (barRegular G).ρ g⁻¹ (Finsupp.single 1 1) -
+      Finsupp.single 1 1 +
       ((-barAugmentationCocycle g).1 - (barAugmentationCocycle g⁻¹).1) =
     (-barAugmentationCocycle g).1
-  have hreg : (barRegular G).ρ g⁻¹ (MonoidAlgebra.single 1 1) =
-      (barAugmentationCocycle g⁻¹).1 + MonoidAlgebra.single 1 1 := by
+  have hreg : (barRegular G).ρ g⁻¹ (Finsupp.single 1 1) =
+      (barAugmentationCocycle g⁻¹).1 + Finsupp.single 1 1 := by
     rw [Representation.ofMulAction_single]
     simp [barAugmentationCocycle, smul_eq_mul]
   rw [hreg]
