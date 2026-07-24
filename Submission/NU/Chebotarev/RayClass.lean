@@ -712,11 +712,24 @@ private theorem exists_integer_with_signs (s : Finset (K →+* ℝ))
   have hw : Function.Injective w := fun σ τ h =>
     Subtype.ext (realPlace_injective h)
   have hdense : DenseRange
-      (algebraMap K ((σ : ↥s) → WithAbs (w σ).1)) :=
-    AbsoluteValue.denseRange_algebraMap_pi
-      (fun σ => (w σ).isNontrivial)
-      (fun σ τ hστ hequiv => hστ (hw
-        ((NumberField.InfinitePlace.eq_iff_isEquiv).2 hequiv)))
+      (algebraMap K ((σ : ↥s) → WithAbs (w σ).1)) := by
+    refine Metric.denseRange_iff.mpr fun z r hr => ?_
+    let z' : (v : NumberField.InfinitePlace K) → WithAbs v.1 :=
+      ∑ σ : ↥s, Pi.single (w σ) (z σ)
+    have hz' (σ : ↥s) : z' (w σ) = z σ := by
+      simp only [z']
+      rw [Finset.sum_apply, Finset.sum_eq_single σ]
+      · simp
+      · intro τ _ hτσ
+        rw [Pi.single_eq_of_ne]
+        exact fun h => hτσ (hw h.symm)
+      · simp
+    obtain ⟨k, hk⟩ :=
+      (NumberField.InfinitePlace.denseRange_algebraMap_pi K).exists_dist_lt z' hr
+    refine ⟨k, (dist_pi_lt_iff hr).2 fun σ => ?_⟩
+    have hki := (dist_pi_lt_iff hr).1 hk (w σ)
+    rw [hz' σ] at hki
+    exact hki
   let z : (σ : ↥s) → WithAbs (w σ).1 := fun σ =>
     if e σ = 1 then WithAbs.toAbs _ (2 : K) else WithAbs.toAbs _ (-2 : K)
   obtain ⟨k, hk⟩ := hdense.exists_dist_lt z (by norm_num : (0 : ℝ) < 1)
