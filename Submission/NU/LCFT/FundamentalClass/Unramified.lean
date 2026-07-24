@@ -1,4 +1,5 @@
 import Submission.NU.LCFT.FundamentalClass.Cyclic
+import Submission.NU.Chebotarev.Frobenius
 
 /-!
 # The unramified carry cocycle
@@ -1277,8 +1278,8 @@ private theorem restricted_local_units_herbrand
   let deepS : Rep.{0, 0, 0} ℤ Sg := Rep.res Sg.subtype deep
   let unitS : Rep.{0, 0, 0} ℤ Sg := Rep.res Sg.subtype (localUnitRep K L)
   let QS : Rep.{0, 0, 0} ℤ Sg := Rep.res Sg.subtype Q
-  let incS : deepS ⟶ unitS := Rep.resMap Sg.subtype inc
-  let projS : unitS ⟶ QS := Rep.resMap Sg.subtype proj
+  let incS : deepS ⟶ unitS := (Rep.resFunctor Sg.subtype).map inc
+  let projS : unitS ⟶ QS := (Rep.resFunctor Sg.subtype).map proj
   have hzeroS : incS ≫ projS = 0 := by
     apply Rep.hom_ext
     apply Representation.IntertwiningMap.ext
@@ -1560,21 +1561,21 @@ private theorem residueFinrank_eq_residueDegree
       IsDiscreteValuationRing.coheight_pow_maximalIdeal] at hc
     have : ramificationIndex K L = ramificationIndex K L + 1 := by exact_mod_cast hc
     omega
-  have hram : p.ramificationIdx' P = ramificationIndex K L :=
-    Ideal.ramificationIdx'_spec hmap.le hnot
+  have hram : p.ramificationIdx P = ramificationIndex K L :=
+    Ideal.ramificationIdx_spec hmap.le hnot
   have hdegree := Ideal.ramificationIdx_mul_inertiaDeg_of_isLocalRing
     (S := RingOfIntegers L) K L (p := p) (by
       rw [hp, ne_eq, Ideal.span_singleton_eq_bot]
       exact hϖKirr.ne_zero)
   rw [hram] at hdegree
   have hselected := finrank_eq_ramificationIndex_mul_residueDegree K L
-  have hinertia : p.inertiaDeg' P = residueDegree K L := by
+  have hinertia : p.inertiaDeg P = residueDegree K L := by
     apply Nat.eq_of_mul_eq_mul_left
       (ramificationInvariants_exists K L).choose_spec.choose_spec.1
     exact hdegree.trans hselected
   calc
-    Module.finrank (LocalResidueField K) (LocalResidueField L) = p.inertiaDeg' P := by
-      rw [Ideal.inertiaDeg'_algebraMap]
+    Module.finrank (LocalResidueField K) (LocalResidueField L) = p.inertiaDeg P := by
+      rw [Ideal.inertiaDeg_algebraMap]
       rfl
     _ = residueDegree K L := hinertia
 
