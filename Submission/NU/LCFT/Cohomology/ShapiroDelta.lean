@@ -20,6 +20,29 @@ open CategoryTheory CategoryTheory.Limits
 
 universe u v w
 
+/-- Compatibility shim for the restriction exactness API added after the pinned Mathlib commit. -/
+lemma _root_.Rep.shortExact_res
+    {H G : Type} [Group H] [Group G] (φ : H →* G)
+    {X : ShortComplex (Rep ℤ G)} :
+    (X.map (Rep.resFunctor φ)).ShortExact ↔ X.ShortExact := by
+  constructor
+  · intro h
+    have h₁ := h.1
+    have h₂ := h.2
+    have h₃ := h.3
+    rw [ShortComplex.exact_map_iff_of_faithful] at h₁
+    simp only [ShortComplex.map_f, Rep.mono_iff_injective, ShortComplex.map_g,
+      Rep.epi_iff_surjective] at h₂ h₃
+    exact { exact := h₁
+            mono_f := (Rep.mono_iff_injective _).2 h₂
+            epi_g := (Rep.epi_iff_surjective _).2 h₃ }
+  · rintro @⟨_, mono_f, epi_g⟩
+    exact {
+      exact := by rwa [ShortComplex.exact_map_iff_of_faithful]
+      mono_f := by simpa [Rep.mono_iff_injective] using! mono_f
+      epi_g := by simpa [Rep.epi_iff_surjective] using! epi_g
+    }
+
 private noncomputable def precompLinearYonedaObj
     {k : Type u} {C : Type v} [Ring k] [Category C] [Abelian C] [Linear k C]
     {P Q : ChainComplex C ℕ} (q : P ⟶ Q) (A : C) :
@@ -147,7 +170,8 @@ private theorem shapiroResolutionComparison_naturality
 
 private noncomputable def linearYonedaObjResIsoHom (A : Rep ℤ S) :
     shapiroLinearYonedaObj S A ⟶
-      repLinearYonedaObj (Rep.barComplex ℤ G) (Rep.coind S.subtype A) where
+      repLinearYonedaObj (Rep.barComplex ℤ G)
+        ((Rep.coindFunctor ℤ S.subtype).obj A) where
   f n := (groupCohomology.linearYonedaObjResProjectiveResolutionIso
     (Rep.barResolution ℤ G) A).hom.f n
   comm' i j _ := (groupCohomology.linearYonedaObjResProjectiveResolutionIso
@@ -187,7 +211,8 @@ private theorem shapiroCochainsMap_naturality {A B : Rep ℤ S} (f : A ⟶ B) :
   slice_lhs 4 5 =>
     erw [inhomogeneousCochainsIso_inv_naturality
       (H := G) ((Rep.coindFunctor ℤ S.subtype).map f)]
-  slice_lhs 3 4 => erw [← linearYonedaObjResIso_naturality S f]
+  slice_lhs 3 5 =>
+    erw [← linearYonedaObjResIso_naturality_assoc S f]
   slice_lhs 2 3 => erw [shapiroResolutionComparison_naturality S f]
   slice_lhs 1 2 =>
     erw [← inhomogeneousCochainsIso_naturality (H := S) f]
