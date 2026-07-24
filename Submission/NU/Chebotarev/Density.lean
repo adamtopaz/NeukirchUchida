@@ -293,8 +293,10 @@ theorem PrimeIdeal.norm_pow_inertiaDeg
     (q : PrimeIdeal E) (p : PrimeIdeal K)
     (hqp : q.asIdeal.LiesOver p.asIdeal) :
     PrimeIdeal.norm q = PrimeIdeal.norm p ^
-      q.asIdeal.inertiaDeg (NumberField.RingOfIntegers K) := by
-  exact (Ideal.absNorm_pow_inertiaDeg p.asIdeal q.asIdeal).symm
+      p.asIdeal.inertiaDeg q.asIdeal := by
+  letI : q.asIdeal.LiesOver p.asIdeal := hqp
+  exact Ideal.absNorm_eq_pow_inertiaDeg_of_liesOver q.asIdeal p.asIdeal
+    (inferInstance : p.asIdeal.IsPrime) p.ne_bot
 
 /-- Blueprint Lemma 2.2, proposed declaration
 `PrimeIdeal.count_residueDegree_ge_two`: primes of relative residue degree at
@@ -306,7 +308,7 @@ theorem PrimeIdeal.count_residueDegree_ge_two
       (fun x : ℝ =>
         (primeCounting
           {q : PrimeIdeal E |
-            2 ≤ q.asIdeal.inertiaDeg (NumberField.RingOfIntegers K)} x : ℝ))
+            2 ≤ (q.asIdeal.under (NumberField.RingOfIntegers K)).inertiaDeg q.asIdeal} x : ℝ))
       (fun x : ℝ => Real.sqrt x) := by
   classical
   let contract : PrimeIdeal E → PrimeIdeal K := fun q =>
@@ -321,8 +323,9 @@ theorem PrimeIdeal.count_residueDegree_ge_two
   filter_upwards [eventually_ge_atTop (1 : ℝ)] with x hx
   rw [Real.norm_eq_abs, abs_of_nonneg (Nat.cast_nonneg _), Real.norm_eq_abs,
     abs_of_nonneg (Real.sqrt_nonneg _)]
-  let Q : Set (PrimeIdeal E) := {q | 2 ≤ q.asIdeal.inertiaDeg
-      (NumberField.RingOfIntegers K) ∧ (PrimeIdeal.norm q : ℝ) ≤ x}
+  let Q : Set (PrimeIdeal E) := {q |
+      2 ≤ (q.asIdeal.under (NumberField.RingOfIntegers K)).inertiaDeg q.asIdeal ∧
+        (PrimeIdeal.norm q : ℝ) ≤ x}
   let P : Set (PrimeIdeal K) := {p | (PrimeIdeal.norm p : ℝ) ≤ Real.sqrt x}
   have hQfin : Q.Finite := by
     obtain ⟨n : ℕ, hn⟩ := exists_nat_ge x
@@ -350,8 +353,8 @@ theorem PrimeIdeal.count_residueDegree_ge_two
     have hone : 1 ≤ PrimeIdeal.norm (contract q) :=
       Nat.one_le_iff_ne_zero.mpr ((Ideal.absNorm_eq_zero_iff).not.mpr (contract q).ne_bot)
     have hpows : PrimeIdeal.norm (contract q) ^ 2 ≤
-        PrimeIdeal.norm (contract q) ^ q.asIdeal.inertiaDeg
-          (NumberField.RingOfIntegers K) :=
+        PrimeIdeal.norm (contract q) ^
+          (q.asIdeal.under (NumberField.RingOfIntegers K)).inertiaDeg q.asIdeal :=
       Nat.pow_le_pow_right (Nat.zero_lt_of_lt hone) hq.1
     apply (Real.le_sqrt (Nat.cast_nonneg _) (by linarith : 0 ≤ x)).2
     rw [← Nat.cast_pow]
