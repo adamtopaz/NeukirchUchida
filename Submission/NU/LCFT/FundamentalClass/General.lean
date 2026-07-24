@@ -24,6 +24,40 @@ variable (K L : Type) [Field K] [Field L] [Algebra K L]
   [ValuativeRel L] [TopologicalSpace L] [IsNonarchimedeanLocalField L]
   [ValuativeExtension K L] [ContinuousSMul K L]
 
+private lemma groupCohomology_map_congr
+    {k G H : Type} [CommRing k] [Group G] [Group H]
+    {A : Rep k H} {B : Rep k G} {f g : G →* H}
+    {φ : Rep.res f A ⟶ B} {ψ : Rep.res g A ⟶ B} (hfg : f = g)
+    (hφψ : φ.hom.toLinearMap = ψ.hom.toLinearMap) (n : ℕ) :
+    groupCohomology.map f φ n = groupCohomology.map g ψ n := by
+  subst hfg
+  congr
+  ext
+  simp [hφψ]
+
+private noncomputable def groupCohomology_mapIso
+    {k G H : Type} [CommRing k] [Group G] [Group H]
+    {A : Rep k H} {B : Rep k G} (e : G ≃* H) (e' : B.V ≃ₗ[k] A.V)
+    (he : ∀ g, e' ∘ₗ B.ρ g = A.ρ (e g) ∘ₗ e') (n : ℕ) :
+    groupCohomology B n ≅ groupCohomology A n where
+  hom := groupCohomology.map e.symm (Rep.ofHom ⟨e', fun h ↦ by simp [he]⟩) n
+  inv := groupCohomology.map e (Rep.ofHom ⟨e'.symm, fun g ↦ by
+    rw [e'.toLinearMap_symm_comp_eq, ← LinearMap.comp_assoc]
+    simp [he, LinearMap.comp_assoc]⟩) n
+  hom_inv_id := by
+    rw [← groupCohomology.map_comp, ← groupCohomology.map_id]
+    exact groupCohomology_map_congr (by simp) e'.symm_comp n
+  inv_hom_id := by
+    rw [← groupCohomology.map_comp, ← groupCohomology.map_id]
+    exact groupCohomology_map_congr (by simp) e'.comp_symm n
+
+private theorem groupCohomology_mapIso_hom
+    {k G H : Type} [CommRing k] [Group G] [Group H]
+    {A : Rep k H} {B : Rep k G} (e : G ≃* H) (e' : B.V ≃ₗ[k] A.V)
+    (he : ∀ g, e' ∘ₗ B.ρ g = A.ρ (e g) ∘ₗ e') (n : ℕ) :
+    (groupCohomology_mapIso e e' he n).hom =
+      groupCohomology.map e.symm (Rep.ofHom ⟨e', fun h ↦ by simp [he]⟩) n := rfl
+
 private theorem normalizedGeneratorPackage
     {A : Type*} [AddCommGroup A] [Finite A]
     (n : ℕ) (a : A) (ha : addOrderOf a = n) (hcard : Nat.card A ≤ n) :
@@ -163,7 +197,7 @@ private noncomputable def restrictedH1Equiv
     ext x
     rfl
   exact (comparisonH1 _).trans
-    ((groupCohomology.mapIso eG eM he 1).toLinearEquiv.toAddEquiv.trans
+    ((groupCohomology_mapIso eG eM he 1).toLinearEquiv.toAddEquiv.trans
       (comparisonH1 _).symm)
 
 private noncomputable def restrictedH2Equiv
@@ -182,7 +216,7 @@ private noncomputable def restrictedH2Equiv
     ext x
     rfl
   exact (comparisonH2 _).trans
-    ((groupCohomology.mapIso eG eM he 2).toLinearEquiv.toAddEquiv.trans
+    ((groupCohomology_mapIso eG eM he 2).toLinearEquiv.toAddEquiv.trans
       (comparisonH2 _).symm)
 
 private noncomputable def quotientCoefficientEquiv
@@ -291,7 +325,7 @@ private noncomputable def quotientH2Equiv
       rw [IsGalois.normalAutEquivQuotient_apply,
         AlgEquiv.restrictNormalHom_apply]
   exact (comparisonH2 _).trans
-    ((groupCohomology.mapIso eG eM he 2).toLinearEquiv.toAddEquiv.trans
+    ((groupCohomology_mapIso eG eM he 2).toLinearEquiv.toAddEquiv.trans
       (comparisonH2 _).symm)
 
 /-- Local-field structures on a fixed field, compatible with both sides of the tower. -/
@@ -377,10 +411,16 @@ private noncomputable def fixedFieldLocalData
       change ‖a‖ = 1 at h'
       exact ha1.ne h'
   let normValuedE : Valued E NNReal := NormedField.toValued
+  letI : Valued E NNReal := normValuedE
+  haveI : (Valued.v : Valuation E NNReal).Compatible := by
+    rw [show (Valued.v : Valuation E NNReal) = vE from rfl]
+    infer_instance
   have htop : IsValuativeTopology E := by
-    apply IsValuativeTopology.of_mem_nhds_zero_iff_vle vE
+    apply IsValuativeTopology.of_zero
     intro s
-    exact @Valued.is_topological_valuation E _ NNReal _ normValuedE s
+    rw [Valued.is_topological_valuation s]
+    simpa using
+      (Valued.v : Valuation E NNReal).exists_setOf_restrict_le_iff 0 s
   letI : IsValuativeTopology E := htop
   have hnontriv : ValuativeRel.IsNontrivial E :=
     (ValuativeRel.isNontrivial_iff_isNontrivial vE).2 inferInstance
@@ -1275,7 +1315,7 @@ private noncomputable def towerQuotientH2Equiv
         ((MulRep K M).quotientToInvariants (towerQuotientHom K E M).ker) ≃+
       Inhomogeneous.H2 (MulRep K E) :=
   (comparisonH2 _).trans
-    ((groupCohomology.mapIso (towerQuotientGroupEquiv K E M)
+    ((groupCohomology_mapIso (towerQuotientGroupEquiv K E M)
       (towerQuotientLinearEquiv K E M)
       (towerQuotientLinearEquiv_equivariant K E M) 2).toLinearEquiv.toAddEquiv.trans
         (comparisonH2 _).symm)
@@ -1298,7 +1338,7 @@ private noncomputable def towerKernelH2Equiv
     ext x
     rfl
   exact (comparisonH2 _).trans
-    ((groupCohomology.mapIso eG eM he 2).toLinearEquiv.toAddEquiv.trans
+    ((groupCohomology_mapIso eG eM he 2).toLinearEquiv.toAddEquiv.trans
       (comparisonH2 _).symm)
 
 set_option maxHeartbeats 800000 in
@@ -1328,16 +1368,16 @@ private theorem towerQuotientH2Equiv_inflation
       rw [eG.apply_symm_apply] at hh
       exact hh⟩
   have hmap :
-      (groupCohomology.mapIso eG eM he 2).hom ≫
+      (groupCohomology_mapIso eG eM he 2).hom ≫
           groupCohomology.map (towerQuotientHom K E M)
             (towerInflationCoefficient K E M) 2 =
         groupCohomology.map (QuotientGroup.mk' (towerQuotientHom K E M).ker)
           (Rep.ofHom <| (MulRep K M).ρ.quotientToInvariants_lift
             (towerQuotientHom K E M).ker) 2 := by
-    rw [show (groupCohomology.mapIso eG eM he 2).hom =
+    rw [show (groupCohomology_mapIso eG eM he 2).hom =
       groupCohomology.map eG.symm φ 2 from rfl]
     rw [← groupCohomology.map_comp]
-    apply groupCohomology.map_congr
+    apply groupCohomology_map_congr
     · ext σ
       apply eG.injective
       change eG (eG.symm (towerQuotientHom K E M σ)) =
@@ -1382,12 +1422,12 @@ private theorem towerKernelH2Equiv_restriction
     rfl
   have hmap :
       groupCohomology.map (towerQuotientHom K E M).ker.subtype (𝟙 _) 2 ≫
-          (groupCohomology.mapIso eG eM he 2).hom =
+          (groupCohomology_mapIso eG eM he 2).hom =
         groupCohomology.map (towerSubgroupHom K E M)
           (towerRestrictionCoefficient K E M) 2 := by
-    rw [groupCohomology.mapIso_hom]
+    rw [groupCohomology_mapIso_hom]
     rw [← groupCohomology.map_comp]
-    apply groupCohomology.map_congr
+    apply groupCohomology_map_congr
     · ext σ
       rfl
     · apply LinearMap.ext
@@ -1530,11 +1570,15 @@ private noncomputable def envelopeFiniteLocalFieldData
     Valuation.Compatible.ofValuation (NormedField.valuation (K := E))
   letI : TopologicalSpace E := tE
   letI : Valued E NNReal := NormedField.toValued
+  haveI : (Valued.v : Valuation E NNReal).Compatible := by
+    rw [show (Valued.v : Valuation E NNReal) = NormedField.valuation from rfl]
+    infer_instance
   have htop : IsValuativeTopology E := by
-    apply IsValuativeTopology.of_mem_nhds_zero_iff_vle (NormedField.valuation (K := E))
-    have hv : (Valued.v : Valuation E NNReal) = NormedField.valuation := rfl
-    rw [← hv]
-    exact Valued.is_topological_valuation
+    apply IsValuativeTopology.of_zero
+    intro s
+    rw [Valued.is_topological_valuation s]
+    simpa using
+      (Valued.v : Valuation E NNReal).exists_setOf_restrict_le_iff 0 s
   have hloc : LocallyCompactSpace E :=
     LocallyCompactSpace.of_finiteDimensional_of_complete K E
   have hnontriv : ValuativeRel.IsNontrivial E := by
@@ -1998,14 +2042,14 @@ private theorem envelopeUnramifiedCyclicDataExists
       (K := E) (Ksep := Esep) T C j (m - 1)
     rw [hm, hres, hresdeg]
   letI : FiniteDimensional E j.fieldRange :=
-    (AlgHom.equivFieldRange j).toLinearEquiv.finiteDimensional
+    j.equivFieldRange.toLinearEquiv.finiteDimensional
   have hrange : Module.finrank E j.fieldRange = m := by
-    rw [← (AlgHom.equivFieldRange j).toLinearEquiv.finrank_eq]
+    rw [← j.equivFieldRange.toLinearEquiv.finrank_eq]
   have hWrange : W = j.fieldRange :=
     IntermediateField.eq_of_le_of_finrank_eq hWle
       ((T.finrank (m - 1)).trans (hm.trans hrange.symm))
   let eWC : W ≃ₐ[E] C :=
-    (IntermediateField.equivOfEq hWrange).trans (AlgHom.equivFieldRange j).symm
+    (IntermediateField.equivOfEq hWrange).trans j.equivFieldRange.symm
   let DW : UnramifiedCyclicExtensionData E W :=
     envelopeTowerUnramifiedCyclicData E Esep T (m - 1)
   exact ⟨envelopeUnramifiedCyclicDataTransport E W C DW eWC hunr⟩
@@ -2235,7 +2279,7 @@ private theorem envelope_tower_intersection_finrank
   let E := j.fieldRange
   let U := T.field (n - 1)
   let I : IntermediateField K Ksep := E ⊓ U
-  letI : FiniteDimensional K E := (AlgHom.equivFieldRange j).toLinearEquiv.finiteDimensional
+  letI : FiniteDimensional K E := j.equivFieldRange.toLinearEquiv.finiteDimensional
   letI : FiniteDimensional K U := T.finiteDimensional (n - 1)
   letI : IsGalois K U := T.isGalois (n - 1)
   letI : FiniteDimensional K I :=
@@ -2312,7 +2356,7 @@ private theorem unramifiedEnvelopeGeometry_exists
   letI : IsSepClosed Ksep := IsSepClosure.sep_closed K
   let j : L →ₐ[K] Ksep := IsSepClosed.lift
   let E : IntermediateField K Ksep := j.fieldRange
-  let eLE : L ≃ₐ[K] E := AlgHom.equivFieldRange j
+  let eLE : L ≃ₐ[K] E := j.equivFieldRange
   letI : FiniteDimensional K E := eLE.toLinearEquiv.finiteDimensional
   letI : IsGalois K E := IsGalois.of_algEquiv eLE
   let DE := envelopeFiniteLocalFieldData K E
@@ -2603,7 +2647,7 @@ private theorem inflatedCarry_restricts_zero
       B.sourceCoefficient.hom (Additive.ofMul (Additive.toMul x))
     apply Additive.toMul.injective
     exact (B.sourceCoefficient_apply (Additive.toMul x)).symm
-  have hmaps := groupCohomology.map_congr
+  have hmaps := groupCohomology_map_congr
     (A := MulRep K U) (B := MulRep L M) hf hc 2
   apply (comparisonH2 (MulRep L M)).injective
   simp only [transportedH2, AddMonoidHom.coe_comp, AddEquiv.coe_toAddMonoidHom,
@@ -2891,10 +2935,10 @@ private theorem envelopeSourceRange_eq_tower
       (K := K) (Ksep := Ksep) T U j (n - 1)
     rw [hn, hres, hresdeg]
   letI : FiniteDimensional K j.fieldRange :=
-    (AlgHom.equivFieldRange j).toLinearEquiv.finiteDimensional
+    j.equivFieldRange.toLinearEquiv.finiteDimensional
   apply (IntermediateField.eq_of_le_of_finrank_eq hle ?_).symm
   rw [T.finrank (n - 1), hn]
-  exact (AlgHom.equivFieldRange j).toLinearEquiv.finrank_eq
+  exact j.equivFieldRange.toLinearEquiv.finrank_eq
 
 private theorem envelopeRange_eq
     (K L U M Ksep : Type)
@@ -3065,11 +3109,11 @@ private theorem unramifiedEnvelope_equivs
   have hUr : jU₁.fieldRange = jU₂.fieldRange := hU₁.trans hU₂.symm
   have hMr : jM₁.fieldRange = jM₂.fieldRange := hM₁.trans hM₂.symm
   let eU : U₁ ≃ₐ[K] U₂ :=
-    (AlgHom.equivFieldRange jU₁).trans
-      ((IntermediateField.equivOfEq hUr).trans (AlgHom.equivFieldRange jU₂).symm)
+    jU₁.equivFieldRange.trans
+      ((IntermediateField.equivOfEq hUr).trans jU₂.equivFieldRange.symm)
   let eM : M₁ ≃ₐ[K] M₂ :=
-    (AlgHom.equivFieldRange jM₁).trans
-      ((IntermediateField.equivOfEq hMr).trans (AlgHom.equivFieldRange jM₂).symm)
+    jM₁.equivFieldRange.trans
+      ((IntermediateField.equivOfEq hMr).trans jM₂.equivFieldRange.symm)
   have heU (u : U₁) : jU₂ (eU u) = jU₁ u := by
     change jU₂ (jU₂.equivFieldRange.symm
       ((IntermediateField.equivOfEq hUr) (jU₁.equivFieldRange u))) = jU₁ u
@@ -3877,7 +3921,7 @@ private theorem towerInflation_diamond
   have hcLinear : cB.hom.toLinearMap = cC.hom.toLinearMap := by
     apply LinearMap.ext
     exact hc
-  have hmaps := groupCohomology.map_congr
+  have hmaps := groupCohomology_map_congr
     (A := MulRep F A) (B := MulRep F D) hq hcLinear 2
   have hmiddle : transportedH2 qB cB x = transportedH2 qC cC x := by
     apply (comparisonH2 (MulRep F D)).injective
@@ -4424,7 +4468,7 @@ private theorem towerRestriction_inflation_square
   have hcLinear : cL.hom.toLinearMap = cR.hom.toLinearMap := by
     apply LinearMap.ext
     exact hc
-  have hmaps := groupCohomology.map_congr
+  have hmaps := groupCohomology_map_congr
     (A := MulRep F A) (B := MulRep E B) hq hcLinear 2
   have hmiddle : transportedH2 qL cL x = transportedH2 qR cR x := by
     apply (comparisonH2 (MulRep E B)).injective
