@@ -794,7 +794,9 @@ private theorem weberPrivateEulerProduct_hasProd {ι : Type*} [DecidableEq ι]
         (𝓝 (weberPrivateFactorTerm x e)) := by
     apply tendsto_const_nhds.congr'
     filter_upwards [eventually_ge_atTop e.support] with t ht
-    simp [f, ht]
+    have ht' : e.support ⊆ t := ht
+    dsimp only [f]
+    rw [if_pos ht']
   have hbound : ∀ᶠ t : Finset ι in atTop, ∀ e,
       ‖f t e‖ ≤ ‖weberPrivateFactorTerm x e‖ := by
     filter_upwards [] with t e
@@ -924,13 +926,31 @@ private theorem weberPrivateRiemannZeta_meromorphicAt (s : ℂ) :
     MeromorphicAt riemannZeta s := by
   by_cases hs : s = 1
   · subst s
-    have hmer : MeromorphicAt
-        (fun z : ℂ => (z - 1)⁻¹ + riemannZeta₀ z) 1 :=
-      (analyticAt_id.sub analyticAt_const).meromorphicAt.inv.add
-        (differentiable_riemannZeta₀.analyticAt 1).meromorphicAt
-    apply hmer.congr
-    filter_upwards [self_mem_nhdsWithin] with z hz
-    exact (riemannZeta_eq_inv_sub_add (by simpa using hz)).symm
+    let p : ℂ → ℂ := fun z =>
+      (z - 1)⁻¹ * (Complex.Gammaℝ z)⁻¹
+    let g : ℂ → ℂ := fun z => riemannZeta z - p z
+    have hpdiff (z : ℂ) (hz : z ≠ 1) : DifferentiableAt ℂ p z := by
+      exact ((differentiableAt_id.sub_const (1 : ℂ)).inv
+        (sub_ne_zero.mpr hz)).mul
+          Complex.differentiable_Gammaℝ_inv.differentiableAt
+    have hgdiff : Differentiable ℂ g := by
+      intro z
+      by_cases hz : z = 1
+      · subst z
+        simpa only [g, p, one_div, div_eq_mul_inv, one_mul,
+          HurwitzZeta.hurwitzZetaEven_zero] using
+            (HurwitzZeta.differentiableAt_hurwitzZetaEven_sub_one_div 0)
+      · exact (differentiableAt_riemannZeta hz).sub (hpdiff z hz)
+    have hregular : MeromorphicAt g 1 :=
+      (hgdiff.analyticAt 1).meromorphicAt
+    have hsub : MeromorphicAt (fun z : ℂ => z - 1) 1 :=
+      (analyticAt_id.sub analyticAt_const).meromorphicAt
+    have hpole : MeromorphicAt p 1 := by
+      exact hsub.inv.mul
+        (Complex.differentiable_Gammaℝ_inv.analyticAt 1).meromorphicAt
+    apply (hregular.add hpole).congr
+    filter_upwards [] with z
+    simp only [Pi.add_apply, g, p, sub_add_cancel]
   · exact (analyticOn_riemannZeta s (by simp [hs])).meromorphicAt
 
 /-- Blueprint Proposition 5.3 (`rayClassPartialZeta_continuation`): each partial
