@@ -591,9 +591,15 @@ private theorem lubinTateLevel_exists_of_root (π : Uniformizer K) (m : ℕ) (hm
   letI : vE.Compatible := Valuation.Compatible.ofValuation vE
   letI : TopologicalSpace E := topE
   letI : Valued E ℝ≥0 := NormedField.toValued
+  haveI : (Valued.v : Valuation E ℝ≥0).Compatible := by
+    rw [show (Valued.v : Valuation E ℝ≥0) = NormedField.valuation from rfl]
+    infer_instance
   have hvt : IsValuativeTopology E := by
-    apply IsValuativeTopology.of_mem_nhds_zero_iff_vle vE
-    exact fun {s} => Valued.is_topological_valuation s
+    apply IsValuativeTopology.of_zero
+    intro s
+    rw [Valued.is_topological_valuation s]
+    simpa using
+      (Valued.v : Valuation E ℝ≥0).exists_setOf_restrict_le_iff 0 s
   letI : IsValuativeTopology E := hvt
   have hlc : LocallyCompactSpace E :=
     LocallyCompactSpace.of_finiteDimensional_of_complete K E
@@ -1531,6 +1537,171 @@ private noncomputable def lubinTateLevelPowerBasis
   exact PowerBasis.ofAdjoinEqTop hint
     ((IntermediateField.adjoin_simple_eq_top_iff_of_isAlgebraic hint.isAlgebraic).mp hfield)
 
+@[simp] private lemma coeff_powerSeries_X_pow
+    {R : Type*} [Semiring R] (m n : ℕ) :
+    MvPowerSeries.coeff (Finsupp.single () m)
+        ((PowerSeries.X : PowerSeries R) ^ n) =
+      if m = n then 1 else 0 :=
+  PowerSeries.coeff_X_pow m n
+
+@[simp] private lemma coeff_powerSeries_X
+    {R : Type*} [Semiring R] (m : ℕ) :
+    MvPowerSeries.coeff (Finsupp.single () m)
+        (PowerSeries.X : PowerSeries R) =
+      if m = 1 then 1 else 0 :=
+  PowerSeries.coeff_X m
+
+@[simp] private lemma coeff_powerSeries_one
+    {R : Type*} [Semiring R] (m : ℕ) :
+    MvPowerSeries.coeff (Finsupp.single () m)
+        (1 : PowerSeries R) =
+      if m = 0 then 1 else 0 :=
+  PowerSeries.coeff_one m
+
+private lemma hasSubst_X_zero
+    {σ R : Type*} [CommRing R] (i : σ) :
+    MvPowerSeries.HasSubst
+      ![MvPowerSeries.X i, (0 : MvPowerSeries σ R)] :=
+  MvPowerSeries.hasSubst_of_constantCoeff_zero fun s => by
+    fin_cases s <;> simp
+
+private lemma mvPowerSeries_subst_zero_eq_C_constantCoeff
+    {σ τ R : Type*} [CommRing R] [DecidableEq τ]
+    (f : MvPowerSeries σ R) :
+    f.subst (0 : σ → MvPowerSeries τ R) =
+      MvPowerSeries.C f.constantCoeff := by
+  change f.subst (fun _ : σ => (0 : MvPowerSeries τ R)) = _
+  ext d
+  rw [MvPowerSeries.coeff_subst MvPowerSeries.HasSubst.zero,
+    MvPowerSeries.coeff_C, finsum_eq_single _ 0]
+  · by_cases hd : d = 0
+    · simp [hd]
+    · have hprod : (0 : σ →₀ ℕ).prod
+          (fun _ e => (0 : MvPowerSeries τ R) ^ e) = 1 := by
+        simp [Finsupp.prod]
+      rw [if_neg hd, hprod, MvPowerSeries.coeff_one, if_neg hd, smul_zero]
+  · intro e he
+    obtain ⟨i, hi⟩ : e.support.Nonempty :=
+      Finsupp.support_nonempty_iff.mpr he
+    simp [Finsupp.prod, Finset.prod_eq_zero hi, MvPowerSeries.coeff_zero,
+      zero_pow (e.mem_support_iff.mp hi)]
+
+private lemma mvPowerSeries_subst_zero_of_constantCoeff_zero
+    {σ τ R : Type*} [CommRing R] [DecidableEq τ]
+    {f : MvPowerSeries σ R}
+    (hf : f.constantCoeff = 0) :
+    f.subst (0 : σ → MvPowerSeries τ R) = 0 := by
+  rw [mvPowerSeries_subst_zero_eq_C_constantCoeff, hf, map_zero]
+
+private lemma formalGroup_assoc'
+    {R : Type*} [CommRing R] (F : FormalGroup R) {σ : Type*}
+    {f₀ f₁ f₂ : MvPowerSeries σ R}
+    (h₀ : PowerSeries.HasSubst f₀) (h₁ : PowerSeries.HasSubst f₁)
+    (h₂ : PowerSeries.HasSubst f₂) :
+    F.toPowerSeries.subst ![F.toPowerSeries.subst ![f₀, f₁], f₂] =
+      F.toPowerSeries.subst ![f₀, F.toPowerSeries.subst ![f₁, f₂]] := by
+  obtain aux₁ := MvPowerSeries.HasSubst.cons_subst_zero_left
+    (0 : Fin 3) 1 2 F.zero_constantCoeff
+  obtain aux₂ := MvPowerSeries.HasSubst.cons_subst_zero_right
+    (0 : Fin 3) 1 2 F.zero_constantCoeff
+  have hsubst : MvPowerSeries.HasSubst ![f₀, f₁, f₂] :=
+    MvPowerSeries.hasSubst_of_constantCoeff_nilpotent fun s => by
+      fin_cases s <;> simpa
+  calc
+    _ = (F.toPowerSeries.subst
+        ![F.toPowerSeries.subst
+          ![MvPowerSeries.X (0 : Fin 3), MvPowerSeries.X (1 : Fin 3)],
+          MvPowerSeries.X (2 : Fin 3)]).subst ![f₀, f₁, f₂] := by
+      rw [MvPowerSeries.subst_comp_subst_apply aux₁ hsubst]
+      congr! 2 with s
+      fin_cases s
+      · simp only [Nat.succ_eq_add_one, Nat.reduceAdd, Fin.zero_eta, Fin.isValue,
+          Matrix.cons_val_zero,
+          MvPowerSeries.subst_comp_subst_apply MvPowerSeries.HasSubst.X_X hsubst]
+        congr! 2 with s
+        fin_cases s <;> simp [MvPowerSeries.subst_X hsubst]
+      · simp [MvPowerSeries.subst_X hsubst]
+    _ = _ := by
+      rw [F.assoc, MvPowerSeries.subst_comp_subst_apply aux₂ hsubst]
+      congr! 2 with s
+      fin_cases s
+      · simp [MvPowerSeries.subst_X hsubst]
+      · simp only [Fin.mk_one, Matrix.cons_val_one, Matrix.cons_val_fin_one,
+          MvPowerSeries.subst_comp_subst_apply MvPowerSeries.HasSubst.X_X hsubst]
+        congr! 2 with s
+        fin_cases s <;> simp [MvPowerSeries.subst]
+
+private abbrev formalGroupXzero
+    {R : Type*} [CommRing R] (F : FormalGroup R) : PowerSeries R :=
+  F.toPowerSeries.subst ![PowerSeries.X, 0]
+
+private lemma formalGroupXzero_constantCoeff
+    {R : Type*} [CommRing R] (F : FormalGroup R) :
+    (formalGroupXzero F).constantCoeff = 0 := by
+  simp [PowerSeries.constantCoeff, formalGroupXzero, PowerSeries.X,
+    MvPowerSeries.constantCoeff_subst_eq_zero (hasSubst_X_zero ()) _
+      F.zero_constantCoeff]
+
+@[simp] private lemma formalGroupXzero_coeff_one
+    {R : Type*} [CommRing R] (F : FormalGroup R) :
+    (formalGroupXzero F).coeff 1 = 1 := by
+  rw [PowerSeries.coeff, MvPowerSeries.coeff_subst,
+    finsum_eq_single _ (Finsupp.single 0 1)]
+  · simp [F.lin_coeff_X]
+  · intro d hd
+    by_cases hd₁ : d 1 = 0
+    · by_cases hd₀ : d 0 = 0
+      · simp [hd₀, hd₁]
+      simp [hd₁]
+      grind
+    simp [hd₁]
+  · exact hasSubst_X_zero ()
+
+@[simp] private lemma formalGroupXzero_subst_self
+    {R : Type*} [CommRing R] (F : FormalGroup R) :
+    (formalGroupXzero F).subst (formalGroupXzero F) = formalGroupXzero F := by
+  calc
+    _ = F.toPowerSeries.subst
+        ![F.toPowerSeries.subst ![PowerSeries.X, 0], 0] := by
+      have hsubst : PowerSeries.HasSubst
+          (F.toPowerSeries.subst ![PowerSeries.X (R := R), 0]) := by
+        refine PowerSeries.HasSubst.of_constantCoeff_zero' ?_
+        rw [PowerSeries.constantCoeff, PowerSeries.X,
+          MvPowerSeries.constantCoeff_subst_eq_zero (hasSubst_X_zero ())
+            (by simp) F.zero_constantCoeff]
+      rw [PowerSeries.subst, MvPowerSeries.subst_comp_subst_apply _ hsubst.const]
+      · congr! 2 with d
+        fin_cases d
+        · simp [← PowerSeries.subst_def, PowerSeries.subst_X hsubst]
+        · simp [← PowerSeries.subst_def,
+            ← PowerSeries.coe_substAlgHom hsubst]
+      · exact hasSubst_X_zero ()
+    _ = _ := by
+      have hzero : ![0, 0] = (0 : Fin 2 → PowerSeries R) := by
+        ext x : 1
+        fin_cases x <;> rfl
+      simp [formalGroup_assoc' F, hzero,
+        mvPowerSeries_subst_zero_of_constantCoeff_zero F.zero_constantCoeff,
+        PowerSeries.HasSubst.X', PowerSeries.HasSubst]
+
+private lemma formalGroupXzero_eq_X
+    {R : Type*} [CommRing R] (F : FormalGroup R) :
+    formalGroupXzero F = PowerSeries.X := by
+  haveI : Invertible ((formalGroupXzero F).coeff 1) :=
+    (formalGroupXzero_coeff_one F) ▸ invertibleOne
+  calc
+    _ = (formalGroupXzero F).substInv.subst
+        ((formalGroupXzero F).subst (formalGroupXzero F)) := by
+      have hsubst : PowerSeries.HasSubst (formalGroupXzero F) :=
+        PowerSeries.HasSubst.of_constantCoeff_zero'
+          (formalGroupXzero_constantCoeff F)
+      rw [← PowerSeries.subst_comp_subst_apply hsubst hsubst,
+        PowerSeries.subst_substInv_left _ (formalGroupXzero_constantCoeff F),
+        PowerSeries.subst_X hsubst, formalGroupXzero]
+    _ = _ := by
+      rw [formalGroupXzero_subst_self,
+        PowerSeries.subst_substInv_left _ (formalGroupXzero_constantCoeff F)]
+
 private theorem formalGroup_sub_X_dvd
     {R : Type*} [CommRing R] (F : FormalGroup R) :
     (MvPowerSeries.X (1 : Fin 2) : MvPowerSeries (Fin 2) R) ∣
@@ -1545,8 +1716,7 @@ private theorem formalGroup_sub_X_dvd
     · simpa [n] using hd
   rw [deq]
   have h := congrArg (PowerSeries.coeff n)
-    (FormalGroup.add_zero F
-      (PowerSeries.HasSubst.X' : PowerSeries.HasSubst (PowerSeries.X : PowerSeries R)))
+    (formalGroupXzero_eq_X F)
   rw [map_sub]
   change MvPowerSeries.coeff (Finsupp.single () n)
       (F.toPowerSeries.subst ![PowerSeries.X, 0]) =
@@ -1557,12 +1727,12 @@ private theorem formalGroup_sub_X_dvd
     · simp at h
       rw [sub_eq_zero, h]
       by_cases hn : n = 1
-      · simp [PowerSeries.coeff_X, MvPowerSeries.coeff_X, hn]
+      · simp [MvPowerSeries.coeff_X, hn]
       · have hs : Finsupp.single (0 : Fin 2) n ≠ Finsupp.single 0 1 := by
           intro hs
           apply hn
           simpa using congrArg (fun e : Fin 2 →₀ ℕ => e 0) hs
-        simp [PowerSeries.coeff_X, MvPowerSeries.coeff_X, hn, hs]
+        simp [MvPowerSeries.coeff_X, hn, hs]
     · intro e he
       by_cases he1 : e 1 = 0
       · by_cases he0 : e 0 = n
@@ -1576,7 +1746,7 @@ private theorem formalGroup_sub_X_dvd
           intro hn
           exact (he0 hn.symm).elim
       · simp [he1]
-  · exact MvPowerSeries.HasSubst.X_zero
+  · exact hasSubst_X_zero ()
 
 private theorem formalGroup_sub_X_factor
     {R : Type*} [CommRing R] (F : FormalGroup R) :
@@ -2383,7 +2553,7 @@ private theorem lubinTateIntegralUnitAction_ker
     have h := (lubinTateLevel_evaluation_add_eq_iff K Ksep π m hm L
       1 ((u : RingOfIntegers K) - 1)).mpr hz
     simpa using h
-  apply AlgEquiv.coe_toAlgHom_injective
+  apply AlgEquiv.coe_algHom_injective
   let pb := lubinTateLevelPowerBasis K Ksep π m hm L
   apply pb.algHom_ext
   rw [lubinTateLevelPowerBasis_gen K Ksep π m hm L]
@@ -2834,7 +3004,7 @@ private theorem lubinTateTowerRestriction_integralUnit
   let G := lubinTateFormalModule K π
   let eu := G.endomorphism (u : RingOfIntegers K)
   let f := lubinTateSeries K π
-  apply AlgEquiv.coe_toAlgHom_injective
+  apply AlgEquiv.coe_algHom_injective
   let pb := lubinTateLevelPowerBasis K Ksep π m hm L
   apply pb.algHom_ext
   rw [lubinTateLevelPowerBasis_gen K Ksep π m hm L]
