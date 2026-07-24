@@ -1315,7 +1315,7 @@ private theorem cyclic_norm_criterion_of_norm
   obtain ⟨z, hz⟩ := hb
   let ι : E →ₐ[M] AlgebraicClosure M := IsAlgClosed.lift
   let L : IntermediateField M (AlgebraicClosure M) := ι.fieldRange
-  let e : E ≃ₐ[M] L := AlgHom.equivFieldRange ι
+  let e : E ≃ₐ[M] L := AlgHom.equivFieldRange (f := ι)
   letI : FiniteDimensional M L := e.toLinearEquiv.finiteDimensional
   letI : IsGalois M L := IsGalois.of_algEquiv e
   have hfinrank : Module.finrank M L = ℓ := by
@@ -1828,7 +1828,7 @@ private theorem cyclic_norm_criterion_to_norm
   obtain ⟨c, hc⟩ := cupZero_symm hcup
   let ι : E →ₐ[M] AlgebraicClosure M := IsAlgClosed.lift
   let L : IntermediateField M (AlgebraicClosure M) := ι.fieldRange
-  let e : E ≃ₐ[M] L := AlgHom.equivFieldRange ι
+  let e : E ≃ₐ[M] L := AlgHom.equivFieldRange (f := ι)
   letI : FiniteDimensional M L := e.toLinearEquiv.finiteDimensional
   letI : IsGalois M L := IsGalois.of_algEquiv e
   have hfinrank : Module.finrank M L = ℓ := by
