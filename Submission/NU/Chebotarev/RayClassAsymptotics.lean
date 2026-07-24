@@ -464,7 +464,7 @@ private theorem rayCanonicalGeneratorCounting_eq_mul
     rayCanonicalGeneratorCounting m B x =
       rayRepresentativeCountingNZ m B x * torsionOrder K := by
   rw [rayCanonicalGeneratorCounting, rayRepresentativeCountingNZ, torsionOrder,
-    ← Nat.card_prod]
+    ← Nat.card_eq_fintype_card, ← Nat.card_prod]
   exact Nat.card_congr (rayCanonicalGeneratorEquiv m B x)
 
 private def idealNeEquiv : {a : Ideal O // a ≠ 0} ≃ (Ideal O)⁰ where

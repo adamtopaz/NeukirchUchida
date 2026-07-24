@@ -20,6 +20,33 @@ namespace AbstractReciprocity
 
 variable {G : Type} [Group G]
 
+private lemma groupCohomology_map_congr
+    {k G H : Type} [CommRing k] [Group G] [Group H]
+    {A : Rep k H} {B : Rep k G} {f g : G →* H}
+    {φ : Rep.res f A ⟶ B} {ψ : Rep.res g A ⟶ B} (hfg : f = g)
+    (hφψ : φ.hom.toLinearMap = ψ.hom.toLinearMap) (n : ℕ) :
+    groupCohomology.map f φ n = groupCohomology.map g ψ n := by
+  subst hfg
+  congr
+  ext
+  simp [hφψ]
+
+private noncomputable def groupCohomology_mapIso
+    {k G H : Type} [CommRing k] [Group G] [Group H]
+    {A : Rep k H} {B : Rep k G} (e : G ≃* H) (e' : B.V ≃ₗ[k] A.V)
+    (he : ∀ g, e' ∘ₗ B.ρ g = A.ρ (e g) ∘ₗ e') (n : ℕ) :
+    groupCohomology B n ≅ groupCohomology A n where
+  hom := groupCohomology.map e.symm (Rep.ofHom ⟨e', fun h ↦ by simp [he]⟩) n
+  inv := groupCohomology.map e (Rep.ofHom ⟨e'.symm, fun g ↦ by
+    rw [e'.toLinearMap_symm_comp_eq, ← LinearMap.comp_assoc]
+    simp [he, LinearMap.comp_assoc]⟩) n
+  hom_inv_id := by
+    rw [← groupCohomology.map_comp, ← groupCohomology.map_id]
+    exact groupCohomology_map_congr (by simp) e'.symm_comp n
+  inv_hom_id := by
+    rw [← groupCohomology.map_comp, ← groupCohomology.map_id]
+    exact groupCohomology_map_congr (by simp) e'.comp_symm n
+
 /-- The additive augmentation map on the integral group ring. -/
 def augmentationMap : (G →₀ ℤ) →+ ℤ :=
   Finsupp.liftAddHom (fun _ ↦ AddMonoidHom.id ℤ)
@@ -427,14 +454,11 @@ private noncomputable def downShiftData
   have hg : Function.Surjective g := by
     intro x
     refine ⟨Representation.IndV.mk T.subtype (Rep.res T.subtype M).ρ 1 x, ?_⟩
-    simp [g, Rep.indResAdjunction, Rep.indResHomEquiv]
-    rw [Finsupp.sum_single_index]
-    · rw [show M.ρ (1 : G)⁻¹ x = x by simp]
-      change M.hV2.smul 1 x = x
-      exact M.hV2.one_smul x
-    · rw [show M.ρ (1 : G)⁻¹ x = x by simp]
-      change M.hV2.smul 0 x = 0
-      exact M.hV2.zero_smul x
+    have he : Rep.indResHomEquiv T.subtype (Rep.res T.subtype M) M g = 𝟙 _ := by
+      change (Rep.indResHomEquiv T.subtype (Rep.res T.subtype M) M)
+        ((Rep.indResHomEquiv T.subtype (Rep.res T.subtype M) M).symm (𝟙 _)) = _
+      exact (Rep.indResHomEquiv T.subtype (Rep.res T.subtype M) M).apply_symm_apply _
+    exact congrArg (fun q : Rep.res T.subtype M ⟶ Rep.res T.subtype M => q.hom x) he
   let W : Submodule ℤ (shiftInduced M) := LinearMap.ker g.hom.toLinearMap
   have hW : ∀ s, W ≤ W.comap ((shiftInduced M).ρ s) := by
     intro s x hx
@@ -1061,7 +1085,7 @@ private theorem groupCohomology_subsingleton_res_of_injective
   let eG : H ≃* R := MulEquiv.ofBijective f.rangeRestrict
     ⟨fun x y hxy => hf (congrArg Subtype.val hxy), f.rangeRestrict_surjective⟩
   let eL : (Rep.res f M).V ≃ₗ[ℤ] (Rep.res R.subtype M).V := LinearEquiv.refl ℤ M
-  let e := groupCohomology.mapIso eG eL (fun g => by
+  let e := groupCohomology_mapIso eG eL (fun g => by
     apply LinearMap.ext
     intro x
     rfl) n
@@ -1090,8 +1114,13 @@ private theorem quotient_isCyclic_of_coatom
   refine ⟨q, ?_⟩
   let P : Subgroup G := Subgroup.comap (QuotientGroup.mk' N) (Subgroup.zpowers q)
   have hNP : N ≤ P := by
-    rw [← QuotientGroup.ker_mk' N]
-    exact MonoidHom.ker_le_comap _ _
+    intro x hx
+    change QuotientGroup.mk' N x ∈ Subgroup.zpowers q
+    have hx1 : QuotientGroup.mk' N x = 1 := by
+      rw [← MonoidHom.mem_ker, QuotientGroup.ker_mk']
+      exact hx
+    rw [hx1]
+    exact Subgroup.one_mem _
   have hgP : g ∈ P := Subgroup.mem_zpowers q
   have hPne : P ≠ N := fun h => hg (h ▸ hgP)
   have hNPlt : N < P := lt_of_le_of_ne hNP (Ne.symm hPne)
@@ -1199,7 +1228,8 @@ private theorem finiteGroup_tateAcyclic_of_lowCohomology
       · letI : IsCyclic H := hcyc
         have hX1 := h1X (MonoidHom.id H) Function.injective_id
         have hX2 := h2X (MonoidHom.id H) Function.injective_id
-        rw [Rep.res_id] at hX1 hX2
+        change Subsingleton (groupCohomology.H1 X) at hX1
+        change Subsingleton (groupCohomology.H2 X) at hX2
         exact cyclic_tateAcyclic X hX1 hX2
       · have hcardH : 1 < Nat.card H := by
           rw [Nat.card_eq_fintype_card]
@@ -1246,7 +1276,8 @@ private theorem finiteGroup_tateAcyclic_of_lowCohomology
             have hNX := hproper N hNlt
             have hX1 := h1X (MonoidHom.id H) Function.injective_id
             have hX2 := h2X (MonoidHom.id H) Function.injective_id
-            rw [Rep.res_id] at hX1 hX2
+            change Subsingleton (groupCohomology.H1 X) at hX1
+            change Subsingleton (groupCohomology.H2 X) at hX2
             have hlowQ := quotient_lowCohomology_of_ambient_zero N X hNX hX1 hX2
             have hQX := cyclic_tateAcyclic (X.quotientToInvariants N)
               hlowQ.1 hlowQ.2
@@ -1500,8 +1531,12 @@ private def barRegularInducedSeed :
       Rep.res (⊥ : Subgroup G).subtype (barRegular G) := by
   let L : ℤ →ₗ[ℤ] barRegular G :=
     { toFun := fun n => n • (MonoidAlgebra.single 1 1 : MonoidAlgebra ℤ G)
-      map_add' := by intros; rw [add_smul]
-      map_smul' := by intros; simp [mul_smul] }
+      map_add' := by intros; exact add_smul ..
+      map_smul' := by
+        intros m x
+        change (m * x) • (MonoidAlgebra.single 1 1 : MonoidAlgebra ℤ G) =
+          m • x • (MonoidAlgebra.single 1 1 : MonoidAlgebra ℤ G)
+        exact mul_smul .. }
   exact Rep.ofHom ⟨L, fun g => by
     apply LinearMap.ext
     intro n
@@ -1519,7 +1554,33 @@ private lemma inducedToBarRegular_mk (h : G) (n : ℤ) :
       (Representation.IndV.mk (⊥ : Subgroup G).subtype
         (trivialBottomInteger (G := G)).ρ h n) =
       MonoidAlgebra.single h⁻¹ n := by
-  simp [inducedToBarRegular, Rep.indResHomEquiv, barRegularInducedSeed]
+  let e := Rep.indResHomEquiv (⊥ : Subgroup G).subtype
+    (trivialBottomInteger (G := G)) (barRegular G)
+  have he : e (inducedToBarRegular (G := G)) = barRegularInducedSeed (G := G) :=
+    e.apply_symm_apply _
+  have he1 := congrArg (fun q : trivialBottomInteger (G := G) ⟶
+      Rep.res (⊥ : Subgroup G).subtype (barRegular G) => q.hom n) he
+  change (inducedToBarRegular (G := G)).hom
+    (Representation.IndV.mk (⊥ : Subgroup G).subtype
+      (trivialBottomInteger (G := G)).ρ 1 n) =
+        (barRegularInducedSeed (G := G)).hom n at he1
+  calc
+    _ = (inducedToBarRegular (G := G)).hom ((InducedFromTrivial G ℤ).ρ h⁻¹
+        (Representation.IndV.mk (⊥ : Subgroup G).subtype
+          (trivialBottomInteger (G := G)).ρ 1 n)) := by
+      rw [Representation.ind_mk]
+      simp
+    _ = (barRegular G).ρ h⁻¹ ((inducedToBarRegular (G := G)).hom
+        (Representation.IndV.mk (⊥ : Subgroup G).subtype
+          (trivialBottomInteger (G := G)).ρ 1 n)) :=
+      Rep.hom_comm_apply _ _ _
+    _ = (barRegular G).ρ h⁻¹ ((barRegularInducedSeed (G := G)).hom n) := by
+      rw [he1]
+    _ = _ := by
+      change Representation.ofMulAction ℤ G G h⁻¹
+        (n • (Finsupp.single 1 1 : G →₀ ℤ)) = Finsupp.single h⁻¹ n
+      rw [map_smul, Representation.ofMulAction_single]
+      simp
 
 private def barRegularToInducedAdd : barRegular G →+ InducedFromTrivial G ℤ :=
   (Finsupp.liftAddHom fun g : G =>
@@ -1534,7 +1595,11 @@ private lemma barRegularToInducedLinear_single (g : G) (n : ℤ) :
     barRegularToInducedLinear (G := G) (MonoidAlgebra.single g n) =
       Representation.IndV.mk (⊥ : Subgroup G).subtype
         (trivialBottomInteger (G := G)).ρ g⁻¹ n := by
-  simp [barRegularToInducedLinear, barRegularToInducedAdd]
+  change (Finsupp.single g n).sum (fun x n =>
+    Representation.IndV.mk (⊥ : Subgroup G).subtype
+      (trivialBottomInteger (G := G)).ρ x⁻¹ n) = _
+  rw [Finsupp.sum_single_index]
+  exact LinearMap.map_zero _
 
 private def barRegularToInduced : barRegular G ⟶ InducedFromTrivial G ℤ :=
   Rep.ofHom ⟨barRegularToInducedLinear (G := G), fun g => by
@@ -1548,7 +1613,22 @@ private def barRegularToInduced : barRegular G ⟶ InducedFromTrivial G ℤ :=
           barRegularToInducedLinear_single, barRegularToInducedLinear_single,
           Representation.ind_mk]
         simp [smul_eq_mul]
-    | hadd x y hx hy => simpa using congrArg₂ (· + ·) hx hy
+    | hadd x y hx hy =>
+        calc
+          _ = barRegularToInducedLinear (G := G)
+              ((barRegular G).ρ g x + (barRegular G).ρ g y) :=
+            congrArg _ (((barRegular G).ρ g).map_add x y)
+          _ = barRegularToInducedLinear (G := G) ((barRegular G).ρ g x) +
+              barRegularToInducedLinear (G := G) ((barRegular G).ρ g y) :=
+            (barRegularToInducedLinear (G := G)).map_add _ _
+          _ = (InducedFromTrivial G ℤ).ρ g (barRegularToInducedLinear (G := G) x) +
+              (InducedFromTrivial G ℤ).ρ g (barRegularToInducedLinear (G := G) y) :=
+            congrArg₂ (· + ·) hx hy
+          _ = (InducedFromTrivial G ℤ).ρ g
+              (barRegularToInducedLinear (G := G) x +
+                barRegularToInducedLinear (G := G) y) :=
+            (((InducedFromTrivial G ℤ).ρ g).map_add _ _).symm
+          _ = _ := congrArg _ ((barRegularToInducedLinear (G := G)).map_add x y).symm
     | hsmul n x hx =>
         change (barRegularToInducedAdd (G := G))
             ((barRegular G).ρ g
@@ -1560,7 +1640,17 @@ private def barRegularToInduced : barRegular G ⟶ InducedFromTrivial G ℤ :=
         have hx' := hx
         change (barRegularToInducedAdd (G := G)) ((barRegular G).ρ g x) =
           (InducedFromTrivial G ℤ).ρ g ((barRegularToInducedAdd (G := G)) x) at hx'
-        simpa only [map_zsmul] using congrArg (n • ·) hx'⟩
+        calc
+          _ = (barRegularToInducedAdd (G := G)) (n • (barRegular G).ρ g x) :=
+            congrArg _ (map_zsmul ((barRegular G).ρ g) n x)
+          _ = n • (barRegularToInducedAdd (G := G)) ((barRegular G).ρ g x) :=
+            map_zsmul (barRegularToInducedAdd (G := G)) n _
+          _ = n • (InducedFromTrivial G ℤ).ρ g
+              ((barRegularToInducedAdd (G := G)) x) := congrArg (n • ·) hx'
+          _ = (InducedFromTrivial G ℤ).ρ g
+              (n • (barRegularToInducedAdd (G := G)) x) :=
+            (map_zsmul ((InducedFromTrivial G ℤ).ρ g) n _).symm
+          _ = _ := congrArg _ (map_zsmul (barRegularToInducedAdd (G := G)) n x).symm⟩
 
 private def barRegularIsoInducedFromTrivial : InducedFromTrivial G ℤ ≅ barRegular G where
   hom := inducedToBarRegular (G := G)
@@ -1580,7 +1670,11 @@ private def barRegularIsoInducedFromTrivial : InducedFromTrivial G ℤ ≅ barRe
     rw [inducedToBarRegular_mk]
     change barRegularToInducedLinear (G := G) (MonoidAlgebra.single h⁻¹ n) = _
     rw [barRegularToInducedLinear_single]
-    simp
+    change Representation.IndV.mk (⊥ : Subgroup G).subtype
+      (trivialBottomInteger (G := G)).ρ h⁻¹⁻¹ n =
+        Representation.IndV.mk (⊥ : Subgroup G).subtype
+          (trivialBottomInteger (G := G)).ρ h n
+    rw [inv_inv]
   inv_hom_id := by
     apply Rep.hom_ext
     apply Representation.IntertwiningMap.ext
@@ -1592,8 +1686,10 @@ private def barRegularIsoInducedFromTrivial : InducedFromTrivial G ℤ ≅ barRe
         ((barRegularToInduced (G := G)).hom (MonoidAlgebra.single h n)) = _
     change (inducedToBarRegular (G := G)).hom
         (barRegularToInducedLinear (G := G) (MonoidAlgebra.single h n)) = _
-    rw [barRegularToInducedLinear_single, inducedToBarRegular_mk]
-    simp
+    rw [barRegularToInducedLinear_single, inducedToBarRegular_mk, inv_inv]
+    change MonoidAlgebra.single h n =
+      (LinearMap.id (R := ℤ) (M := MonoidAlgebra ℤ G)) (MonoidAlgebra.single h n)
+    rw [LinearMap.id_apply]
 
 private theorem barRegular_tateAcyclic (S : Subgroup G) [Fintype S] (n : ℤ) :
     Subsingleton (tateCohomology (Rep.res S.subtype (barRegular G)) n) := by
@@ -1755,7 +1851,7 @@ private theorem restrictedCocyclePushoutInclusion_kills_class
         groupCohomology.map (.id G) (cocyclePushoutInclusion M a ha) 2 ≫
           groupCohomology.map S.subtype (𝟙 _) 2 := by
     rw [← groupCohomology.map_comp, ← groupCohomology.map_comp]
-    apply groupCohomology.map_congr rfl
+    apply groupCohomology_map_congr rfl
     simp
   calc
     _ = (groupCohomology.map S.subtype (𝟙 _) 2 ≫
