@@ -1453,7 +1453,7 @@ private noncomputable def comparisonLevelContinuousEquiv
       AlgebraicClosure (CyclotomicField (p : ℕ) L.field))
     infer_instance
   have hquot : Topology.IsQuotientMap e :=
-    Topology.IsQuotientMap.of_surjective_continuous e.surjective hcont
+    hcont.isClosedMap.isQuotientMap hcont e.surjective
   have hinv : Continuous e.symm := hquot.continuous_iff.mpr (by
     convert (continuous_id : Continuous (id :
       orientedCyclotomicLevel o L p → orientedCyclotomicLevel o L p)) using 1
