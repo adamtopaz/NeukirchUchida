@@ -1,18 +1,24 @@
-name = "NeukirchUchida"
-version = "0.1.0"
-keywords = ["math"]
-defaultTargets = ["NeukirchUchida"]
+name = "neukirch_uchida"
+testDriver = "workspace_test"
+defaultTargets = ["Challenge", "Solution", "Submission"]
 
 [leanOptions]
-pp.unicode.fun = true # pretty-prints `fun a ↦ b`
-relaxedAutoImplicit = false
-weak.linter.mathlibStandardSet = true
-maxSynthPendingDepth = 3
+autoImplicit = false
 
 [[require]]
 name = "mathlib"
-scope = "leanprover-community"
-rev = "v4.32.0-rc1"
+git = "https://github.com/leanprover-community/mathlib4.git"
+rev = "360da6fa66c1273b76b6b2d8c5666fd5ac2e3b56"
 
 [[lean_lib]]
-name = "NeukirchUchida"
+name = "Challenge"
+
+[[lean_lib]]
+name = "Solution"
+
+[[lean_lib]]
+name = "Submission"
+
+[[lean_exe]]
+name = "workspace_test"
+root = "WorkspaceTest"
