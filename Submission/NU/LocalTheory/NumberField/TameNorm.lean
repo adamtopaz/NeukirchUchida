@@ -413,10 +413,11 @@ private theorem tame_cyclic_norm_factorization_core
   letI : LocallyCompactSpace Q := by infer_instance
   letI : ValuativeRel Q := ValuativeRel.ofValuation vQ
   letI : vQ.Compatible := Valuation.Compatible.ofValuation vQ
-  letI : IsValuativeTopology Q :=
-    IsValuativeTopology.of_mem_nhds_zero_iff_vle vQ (by
-      intro s
-      exact Valued.is_topological_valuation s)
+  letI : IsValuativeTopology Q := by
+    apply IsValuativeTopology.of_zero
+    intro s
+    rw [Valued.is_topological_valuation s]
+    simpa using vQ.exists_setOf_restrict_le_iff 0 s
   letI : ValuativeRel.IsNontrivial Q :=
     (ValuativeRel.isNontrivial_iff_isNontrivial vQ).2 inferInstance
   letI : IsNonarchimedeanLocalField Q :=
@@ -439,10 +440,15 @@ private theorem tame_cyclic_norm_factorization_core
   letI : ValuativeRel R := ValuativeRel.ofValuation vR
   letI : vR.Compatible := Valuation.Compatible.ofValuation vR
   letI : Valued R NNReal := NormedField.toValued
-  letI : IsValuativeTopology R :=
-    IsValuativeTopology.of_mem_nhds_zero_iff_vle vR (by
-      intro s
-      exact Valued.is_topological_valuation s)
+  haveI : (Valued.v : Valuation R NNReal).Compatible := by
+    rw [show (Valued.v : Valuation R NNReal) = NormedField.valuation from rfl]
+    infer_instance
+  letI : IsValuativeTopology R := by
+    apply IsValuativeTopology.of_zero
+    intro s
+    rw [Valued.is_topological_valuation s]
+    simpa using
+      (Valued.v : Valuation R NNReal).exists_setOf_restrict_le_iff 0 s
   letI : ProperSpace R := FiniteDimensional.proper Q R
   letI : LocallyCompactSpace R := by infer_instance
   letI : ValuativeRel.IsNontrivial R :=
