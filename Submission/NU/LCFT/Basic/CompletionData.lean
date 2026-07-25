@@ -17,6 +17,33 @@ open scoped ValuativeRel
 
 universe u v w
 
+private lemma groupCohomology_map_congr
+    {k G H : Type} [CommRing k] [Group G] [Group H]
+    {A : Rep k H} {B : Rep k G} {f g : G →* H}
+    {φ : Rep.res f A ⟶ B} {ψ : Rep.res g A ⟶ B} (hfg : f = g)
+    (hφψ : φ.hom.toLinearMap = ψ.hom.toLinearMap) (n : ℕ) :
+    groupCohomology.map f φ n = groupCohomology.map g ψ n := by
+  subst hfg
+  congr
+  ext
+  simp [hφψ]
+
+private noncomputable def groupCohomology_mapIso
+    {k G H : Type} [CommRing k] [Group G] [Group H]
+    {A : Rep k H} {B : Rep k G} (e : G ≃* H) (e' : B.V ≃ₗ[k] A.V)
+    (he : ∀ g, e' ∘ₗ B.ρ g = A.ρ (e g) ∘ₗ e') (n : ℕ) :
+    groupCohomology B n ≅ groupCohomology A n where
+  hom := groupCohomology.map e.symm (Rep.ofHom ⟨e', fun h ↦ by simp [he]⟩) n
+  inv := groupCohomology.map e (Rep.ofHom ⟨e'.symm, fun g ↦ by
+    rw [e'.toLinearMap_symm_comp_eq, ← LinearMap.comp_assoc]
+    simp [he, LinearMap.comp_assoc]⟩) n
+  hom_inv_id := by
+    rw [← groupCohomology.map_comp, ← groupCohomology.map_id]
+    exact groupCohomology_map_congr (by simp) e'.symm_comp n
+  inv_hom_id := by
+    rw [← groupCohomology.map_comp, ← groupCohomology.map_id]
+    exact groupCohomology_map_congr (by simp) e'.comp_symm n
+
 /-- Valuation, topology, and compatibility data on a finite extension of a local field.
 
 Inhabitation sketch: the unique extension of the normalized valuation to a finite separable
@@ -76,11 +103,15 @@ theorem localFieldExtensionData_exists
     Valuation.Compatible.ofValuation (NormedField.valuation (K := L))
   letI : TopologicalSpace L := tL
   letI : Valued L NNReal := NormedField.toValued
+  haveI : (Valued.v : Valuation L NNReal).Compatible := by
+    rw [show (Valued.v : Valuation L NNReal) = NormedField.valuation from rfl]
+    infer_instance
   have htop : IsValuativeTopology L := by
-    apply IsValuativeTopology.of_mem_nhds_zero_iff_vle (NormedField.valuation (K := L))
-    have hv : (Valued.v : Valuation L NNReal) = NormedField.valuation := rfl
-    rw [← hv]
-    exact Valued.is_topological_valuation
+    apply IsValuativeTopology.of_zero
+    intro s
+    rw [Valued.is_topological_valuation s]
+    simpa using
+      (Valued.v : Valuation L NNReal).exists_setOf_restrict_le_iff 0 s
   letI : IsValuativeTopology L := htop
   have hloc : LocallyCompactSpace L :=
     LocallyCompactSpace.of_finiteDimensional_of_complete K L
@@ -483,7 +514,7 @@ private noncomputable def reciprocityRestrictedH1Equiv
     ext x
     rfl
   exact (comparisonH1 _).trans
-    ((groupCohomology.mapIso eG eM he 1).toLinearEquiv.toAddEquiv.trans
+    ((groupCohomology_mapIso eG eM he 1).toLinearEquiv.toAddEquiv.trans
       (comparisonH1 _).symm)
 
 private noncomputable def reciprocityRestrictedH2Equiv
@@ -502,7 +533,7 @@ private noncomputable def reciprocityRestrictedH2Equiv
     ext x
     rfl
   exact (comparisonH2 _).trans
-    ((groupCohomology.mapIso eG eM he 2).toLinearEquiv.toAddEquiv.trans
+    ((groupCohomology_mapIso eG eM he 2).toLinearEquiv.toAddEquiv.trans
       (comparisonH2 _).symm)
 
 private structure ReciprocityFixedFieldLocalData
@@ -587,10 +618,16 @@ private noncomputable def reciprocityFixedFieldLocalData
       change ‖a‖ = 1 at h'
       exact ha1.ne h'
   let normValuedE : Valued E NNReal := NormedField.toValued
+  letI : Valued E NNReal := normValuedE
+  haveI : (Valued.v : Valuation E NNReal).Compatible := by
+    rw [show (Valued.v : Valuation E NNReal) = vE from rfl]
+    infer_instance
   have htop : IsValuativeTopology E := by
-    apply IsValuativeTopology.of_mem_nhds_zero_iff_vle vE
+    apply IsValuativeTopology.of_zero
     intro s
-    exact @Valued.is_topological_valuation E _ NNReal _ normValuedE s
+    rw [Valued.is_topological_valuation s]
+    simpa using
+      (Valued.v : Valuation E NNReal).exists_setOf_restrict_le_iff 0 s
   letI : IsValuativeTopology E := htop
   have hnontriv : ValuativeRel.IsNontrivial E :=
     (ValuativeRel.isNontrivial_iff_isNontrivial vE).2 inferInstance
@@ -1184,8 +1221,13 @@ private theorem shrink_local
     obtain ⟨y, rfl⟩ := e.surjective x
     exact ⟨y, hx0, hx1⟩
   have htop : IsValuativeTopology A := by
-    apply IsValuativeTopology.of_mem_nhds_zero_iff_vle w
+    apply IsValuativeTopology.of_zero
     intro s
+    rw [show (∃ γ : (ValuativeRel.ValueGroupWithZero A)ˣ,
+          {z | ValuativeRel.valuation A z < γ} ⊆ s) ↔
+        ∃ γ : (MonoidWithZeroHom.ValueGroup₀ (.ofClass w))ˣ,
+          {z | w.restrict z < γ.val} ⊆ s by
+      simpa only [sub_zero] using (w.exists_setOf_restrict_le_iff 0 s).symm]
     -- transport the valuation-neighborhood criterion across e
     have heh : (h : A → K) = e := rfl
     rw [show s ∈ 𝓝 (0 : A) ↔ e '' s ∈ 𝓝 (0 : K) by
@@ -3069,15 +3111,16 @@ private noncomputable def finiteReciprocityGaloisEmbeddingDecomposition
                 change j (rep φ (h (algebraMap E L y))) = φ y
                 rw [h.commutes]
                 exact DFunLike.congr_fun (hrep φ) y
-              rw [hφ]
-              simp [s]
+              rw [hφ, ← mul_assoc, inv_mul_cancel, one_mul]
+              rfl
           right_inv := by
             intro g
             change rep (r g) * s ({ ((rep (r g))⁻¹ * g) with
               commutes' := _ } : L ≃ₐ[E] L) = g
             apply AlgEquiv.ext
             intro x
-            simp [s] }
+            change (rep (r g) * ((rep (r g))⁻¹ * g)) x = g x
+            rw [← mul_assoc, mul_inv_cancel, one_mul] }
       equiv_apply := fun _ _ => rfl }
 
 private theorem finiteReciprocity_normUnitsHom_eq_embeddingProduct
