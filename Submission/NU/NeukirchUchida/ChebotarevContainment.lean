@@ -53,36 +53,13 @@ private theorem absoluteRamificationIndex_eq_ramificationIdx
     (L : NumberFieldInOmega)
     (v : NU.Chebotarev.PrimeIdeal L.field) :
     absoluteRamificationIndex L v =
-      v.asIdeal.ramificationIdx (NumberField.RingOfIntegers ℚ) := by
-  change (NU.LocalTheory.restrictFinitePlace ℚ v).asIdeal.ramificationIdx'
-      v.asIdeal = v.asIdeal.ramificationIdx (NumberField.RingOfIntegers ℚ)
-  rw [NU.LocalTheory.restrictFinitePlace_asIdeal]
-  let p : Ideal (NumberField.RingOfIntegers ℚ) :=
-    Ideal.comap (algebraMap (NumberField.RingOfIntegers ℚ)
-      (NumberField.RingOfIntegers L.field)) v.asIdeal
-  change p.ramificationIdx' v.asIdeal = _
-  letI : v.asIdeal.LiesOver p := ⟨by rw [Ideal.under_def]⟩
-  apply Ideal.ramificationIdx'_eq_ramificationIdx p v.asIdeal
-  intro hp
-  have : (NU.LocalTheory.restrictFinitePlace ℚ v).asIdeal = ⊥ := by
-    rw [NU.LocalTheory.restrictFinitePlace_asIdeal]
-    exact hp
-  exact (NU.LocalTheory.restrictFinitePlace ℚ v).ne_bot this
+      v.asIdeal.ramificationIdx' (NumberField.RingOfIntegers ℚ) := rfl
 
 private theorem absoluteResidueDegree_eq_inertiaDeg
     (L : NumberFieldInOmega)
     (v : NU.Chebotarev.PrimeIdeal L.field) :
     absoluteResidueDegree L v =
-      v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) := by
-  change (NU.LocalTheory.restrictFinitePlace ℚ v).asIdeal.inertiaDeg'
-      v.asIdeal = v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ)
-  rw [NU.LocalTheory.restrictFinitePlace_asIdeal]
-  let p : Ideal (NumberField.RingOfIntegers ℚ) :=
-    Ideal.comap (algebraMap (NumberField.RingOfIntegers ℚ)
-      (NumberField.RingOfIntegers L.field)) v.asIdeal
-  change p.inertiaDeg' v.asIdeal = _
-  letI : v.asIdeal.LiesOver p := ⟨by rw [Ideal.under_def]⟩
-  exact Ideal.inertiaDeg'_eq_inertiaDeg p v.asIdeal
+      v.asIdeal.inertiaDeg' (NumberField.RingOfIntegers ℚ) := rfl
 
 /-- Blueprint Lemma `lem:higher-degree-negligible`: primes of residue degree
 at least two have Dirichlet density zero. -/
@@ -91,16 +68,18 @@ theorem higherDegreePrimes_hasDirichletDensity_zero
     NU.Chebotarev.HasDirichletDensity
       ((degreeOnePrimeSet L)ᶜ) 0 := by
   let S : Set (NU.Chebotarev.PrimeIdeal L.field) :=
-    {v | 2 ≤ v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ)}
+    {v | 2 ≤ (Ideal.under (𝓞 ℚ) v.asIdeal).inertiaDeg v.asIdeal}
   have hset : (degreeOnePrimeSet L)ᶜ = S := by
     ext v
     rw [Set.mem_compl_iff]
+    letI : v.asIdeal.LiesOver (Ideal.under (𝓞 ℚ) v.asIdeal) := ⟨rfl⟩
     change absoluteResidueDegree L v ≠ 1 ↔
-      2 ≤ v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ)
-    rw [absoluteResidueDegree_eq_inertiaDeg]
-    have hpos : 0 < v.asIdeal.inertiaDeg
-        (NumberField.RingOfIntegers ℚ) :=
-      Ideal.inertiaDeg_pos v.asIdeal (NumberField.RingOfIntegers ℚ)
+      2 ≤ (Ideal.under (𝓞 ℚ) v.asIdeal).inertiaDeg v.asIdeal
+    rw [absoluteResidueDegree_eq_inertiaDeg,
+      ← Ideal.inertiaDeg_eq_inertiaDeg'
+        (Ideal.under (𝓞 ℚ) v.asIdeal) v.asIdeal]
+    have hpos : 0 < (Ideal.under (𝓞 ℚ) v.asIdeal).inertiaDeg v.asIdeal :=
+      Ideal.inertiaDeg_pos (Ideal.under (𝓞 ℚ) v.asIdeal) v.asIdeal
     omega
   rw [hset]
   exact NU.Chebotarev.sqrt_bound_hasDirichletDensity_zero S
@@ -121,6 +100,7 @@ theorem degreeOnePrimes_hasDirichletDensity_one
   rw [heq]
   exact higherDegreePrimes_hasDirichletDensity_zero L
 
+set_option maxHeartbeats 800000 in
 /-- Blueprint Proposition `prop:containment` (Chebotarev containment).
 
 If, away from finitely many rational primes, every rational prime with a
@@ -176,6 +156,9 @@ theorem chebotarev_containment
     change (eL.symm x).1 = x.1.1
     exact congrArg (fun y : L' => y.1.1) (eL.apply_symm_apply x)
   letI : IsGalois L.field M.field := hLMgal
+  letI : Finite (M.field ≃ₐ[L.field] M.field) :=
+    Finite.of_injective (AlgEquiv.restrictScalarsHom ℚ)
+      (AlgEquiv.restrictScalarsHom_injective ℚ)
 
   have restriction_eq
       (v : NU.Chebotarev.PrimeIdeal L.field)
@@ -260,9 +243,7 @@ theorem chebotarev_containment
         Ideal.ramificationIdxIn_eq_ramificationIdx q.asIdeal u.asIdeal
           (K.field ≃ₐ[ℚ] K.field),
         Ideal.inertiaDegIn_eq_inertiaDeg q.asIdeal u.asIdeal
-          (K.field ≃ₐ[ℚ] K.field),
-        ← Ideal.ramificationIdx'_eq_ramificationIdx q.asIdeal u.asIdeal q.ne_bot,
-        ← Ideal.inertiaDeg'_eq_inertiaDeg q.asIdeal u.asIdeal]
+          (K.field ≃ₐ[ℚ] K.field)]
       exact one_mul 1 ▸ congrArg₂ (· * ·) hs.1 hs.2
     have hbot : MulAction.stabilizer (K.field ≃ₐ[ℚ] K.field) u.asIdeal = ⊥ :=
       Subgroup.card_eq_one.mp hcard
@@ -416,10 +397,11 @@ theorem chebotarev_containment
     letI : v.asIdeal.LiesOver (rationalPrime L v).asIdeal := hover
     letI : Algebra.IsUnramifiedAt (𝓞 ℚ) v.asIdeal := hunrv
     have he : absoluteRamificationIndex L v = 1 := by
-      change (rationalPrime L v).asIdeal.ramificationIdx' v.asIdeal = 1
-      rw [Ideal.ramificationIdx'_eq_ramificationIdx
+      change v.asIdeal.ramificationIdx' (𝓞 ℚ) = 1
+      rw [← Ideal.ramificationIdx_eq_ramificationIdx'
         (rationalPrime L v).asIdeal v.asIdeal (rationalPrime L v).ne_bot]
       exact Ideal.ramificationIdx_eq_one_of_isUnramifiedAt
+        (R := 𝓞 ℚ) v.ne_bot
     have hsplitK : SplitsCompletelyAt K (rationalPrime L v) :=
       hsplit (rationalPrime L v) hqexc ⟨v, rfl, he, hvdeg⟩
     have hunr : NU.Chebotarev.IsUnramifiedPrime
@@ -435,11 +417,17 @@ theorem chebotarev_containment
       have heIn : v.asIdeal.ramificationIdxIn (𝓞 M.field) = 1 := by
         apply Nat.eq_one_of_dvd_one
         exact ⟨v.asIdeal.inertiaDegIn (𝓞 M.field), hcard.symm⟩
-      have heW : W.asIdeal.ramificationIdx (𝓞 L.field) = 1 := by
+      have heW : W.asIdeal.ramificationIdx' (𝓞 L.field) = 1 := by
         rw [← Ideal.ramificationIdxIn_eq_ramificationIdx v.asIdeal W.asIdeal
           (M.field ≃ₐ[L.field] M.field)]
         exact heIn
-      exact Ideal.ramificationIdx_eq_one_iff.mp heW
+      have heW' : v.asIdeal.ramificationIdx W.asIdeal = 1 := by
+        rw [Ideal.ramificationIdx_eq_ramificationIdx'
+          v.asIdeal W.asIdeal v.ne_bot]
+        exact heW
+      apply (Algebra.isUnramifiedAt_iff_of_isDedekindDomain W.ne_bot).mpr
+      rw [← hWv.over]
+      exact heW'
     change v ∈ NU.Chebotarev.frobeniusPrimeSet
       (K := L.field) (L := M.field)
       (ConjClasses.mk (1 : M.field ≃ₐ[L.field] M.field))
@@ -458,8 +446,9 @@ theorem chebotarev_containment
     have hstab := stabilizer_eq_bot_of_split v hsplitK W hWv
     have hfrob : NU.Chebotarev.arithFrobeniusAt
         (K := L.field) (L := M.field) W ∈
-        MulAction.stabilizer (M.field ≃ₐ[L.field] M.field) W.asIdeal :=
-      IsArithFrobAt.arithFrobAt_mem_stabilizer
+        MulAction.stabilizer (M.field ≃ₐ[L.field] M.field) W.asIdeal := by
+      set_option maxHeartbeats 800000 in
+      exact IsArithFrobAt.arithFrobAt_mem_stabilizer
         (𝓞 L.field) (M.field ≃ₐ[L.field] M.field) W.asIdeal
     rw [hstab] at hfrob
     change ConjClasses.mk (NU.Chebotarev.arithFrobeniusAt
@@ -489,25 +478,19 @@ theorem chebotarev_containment
     · exact primeCountingSet_finite U x
   have hresidue (v : NU.Chebotarev.PrimeIdeal L.field) :
       absoluteResidueDegree L v =
-        v.asIdeal.inertiaDeg (𝓞 ℚ) := by
-    change (NU.LocalTheory.restrictFinitePlace ℚ v).asIdeal.inertiaDeg'
-      v.asIdeal = v.asIdeal.inertiaDeg (𝓞 ℚ)
-    rw [NU.LocalTheory.restrictFinitePlace_asIdeal]
-    let q : Ideal (𝓞 ℚ) :=
-      Ideal.comap (algebraMap (𝓞 ℚ) (𝓞 L.field)) v.asIdeal
-    change q.inertiaDeg' v.asIdeal = _
-    letI : v.asIdeal.LiesOver q := ⟨by rw [Ideal.under_def]⟩
-    exact Ideal.inertiaDeg'_eq_inertiaDeg q v.asIdeal
+        v.asIdeal.inertiaDeg' (𝓞 ℚ) := rfl
   let D : Set (NU.Chebotarev.PrimeIdeal L.field) := (degreeOnePrimeSet L)ᶜ
   let D' : Set (NU.Chebotarev.PrimeIdeal L.field) :=
-    {v | 2 ≤ v.asIdeal.inertiaDeg (𝓞 ℚ)}
+    {v | 2 ≤ (Ideal.under (𝓞 ℚ) v.asIdeal).inertiaDeg v.asIdeal}
   have hDD' : D = D' := by
     ext v
+    letI : v.asIdeal.LiesOver (Ideal.under (𝓞 ℚ) v.asIdeal) := ⟨rfl⟩
     change absoluteResidueDegree L v ≠ 1 ↔
-      2 ≤ v.asIdeal.inertiaDeg (𝓞 ℚ)
-    rw [hresidue]
-    have hpos : 0 < v.asIdeal.inertiaDeg (𝓞 ℚ) :=
-      Ideal.inertiaDeg_pos v.asIdeal (𝓞 ℚ)
+      2 ≤ (Ideal.under (𝓞 ℚ) v.asIdeal).inertiaDeg v.asIdeal
+    rw [hresidue, ← Ideal.inertiaDeg_eq_inertiaDeg'
+      (Ideal.under (𝓞 ℚ) v.asIdeal) v.asIdeal]
+    have hpos : 0 < (Ideal.under (𝓞 ℚ) v.asIdeal).inertiaDeg v.asIdeal :=
+      Ideal.inertiaDeg_pos (Ideal.under (𝓞 ℚ) v.asIdeal) v.asIdeal
     omega
   have hDbound : (fun x => (NU.Chebotarev.primeCounting D x : ℝ))
       =O[atTop] fun x => Real.sqrt x := by
@@ -625,14 +608,16 @@ theorem galois_of_degreeOnePrime_splitsCompletely
   have hNgal : IsGalois ℚ N.field := by
     have hraw : @IsGalois ℚ _ N.field _ N.field.algebra' :=
       IsGalois.normalClosure ℚ L.field Omega
-    apply @IsGalois.of_equiv_equiv ℚ N.field _ _ N.field.algebra'
-      ℚ N.field _ _ (inferInstance) hraw
-      (RingEquiv.refl ℚ) (RingEquiv.refl N.field)
+    apply IsGalois.of_equiv_equiv (h := hraw)
+      (f := RingEquiv.refl ℚ) (g := RingEquiv.refl N.field)
     ext x
     simp
   letI : IsGalois ℚ N.field := hNgal
   letI : IsGalois L.field N.field :=
     IsGalois.tower_top_of_isGalois ℚ L.field N.field
+  letI : Finite (N.field ≃ₐ[L.field] N.field) :=
+    Finite.of_injective (AlgEquiv.restrictScalarsHom ℚ)
+      (AlgEquiv.restrictScalarsHom_injective ℚ)
   let inclusionHom : L.field →ₐ[ℚ] N.field :=
     IsScalarTower.toAlgHom ℚ L.field N.field
   let L' : IntermediateField ℚ N.field := inclusionHom.fieldRange
@@ -702,36 +687,32 @@ theorem galois_of_degreeOnePrime_splitsCompletely
       have hx := DFunLike.congr_fun (congrArg Subtype.val hab) x
       exact hx
     have he : absoluteRamificationIndex L v =
-        v.asIdeal.ramificationIdx (𝓞 ℚ) := by
-      change (rationalPrime L v).asIdeal.ramificationIdx' v.asIdeal = _
-      rw [Ideal.ramificationIdx'_eq_ramificationIdx
-        (rationalPrime L v).asIdeal v.asIdeal (rationalPrime L v).ne_bot]
+        v.asIdeal.ramificationIdx' (𝓞 ℚ) := rfl
     have hf : absoluteResidueDegree L v =
-        v.asIdeal.inertiaDeg (𝓞 ℚ) := by
-      change (rationalPrime L v).asIdeal.inertiaDeg' v.asIdeal = _
-      exact Ideal.inertiaDeg'_eq_inertiaDeg (rationalPrime L v).asIdeal v.asIdeal
+        v.asIdeal.inertiaDeg' (𝓞 ℚ) := rfl
     have hcardq : Nat.card Dq =
-        w.asIdeal.ramificationIdx (𝓞 ℚ) *
-          w.asIdeal.inertiaDeg (𝓞 ℚ) := by
+        w.asIdeal.ramificationIdx' (𝓞 ℚ) *
+          w.asIdeal.inertiaDeg' (𝓞 ℚ) := by
       rw [Ideal.card_stabilizer_eq q.asIdeal w.asIdeal,
         Ideal.ramificationIdxIn_eq_ramificationIdx q.asIdeal w.asIdeal
           (N.field ≃ₐ[ℚ] N.field),
         Ideal.inertiaDegIn_eq_inertiaDeg q.asIdeal w.asIdeal
           (N.field ≃ₐ[ℚ] N.field)]
     have hcardl : Nat.card Dl =
-        w.asIdeal.ramificationIdx (𝓞 L.field) *
-          w.asIdeal.inertiaDeg (𝓞 L.field) := by
+        w.asIdeal.ramificationIdx' (𝓞 L.field) *
+          w.asIdeal.inertiaDeg' (𝓞 L.field) := by
       rw [Ideal.card_stabilizer_eq v.asIdeal w.asIdeal,
         Ideal.ramificationIdxIn_eq_ramificationIdx v.asIdeal w.asIdeal
           (N.field ≃ₐ[L.field] N.field),
         Ideal.inertiaDegIn_eq_inertiaDeg v.asIdeal w.asIdeal
           (N.field ≃ₐ[L.field] N.field)]
+    letI := Localization.AtPrime.algebraOfLiesOver v.asIdeal w.asIdeal
     have hcard : Nat.card Dq =
         (absoluteRamificationIndex L v * absoluteResidueDegree L v) *
           Nat.card Dl := by
       rw [hcardq, hcardl, he, hf,
-        Ideal.ramificationIdx_tower v.asIdeal w.asIdeal,
-        Ideal.inertiaDeg_tower v.asIdeal w.asIdeal]
+        Ideal.ramificationIdx'_tower' v.asIdeal w.asIdeal,
+        Ideal.inertiaDeg'_tower v.asIdeal w.asIdeal]
       ring
     constructor
     · intro hlocal sigma hsigma
@@ -987,14 +968,14 @@ private theorem splitsCompletelyAt_of_degreeOne_of_isGalois
     rfl⟩
   letI : v₀.asIdeal.LiesOver q.asIdeal := hv₀over
   letI : v.asIdeal.LiesOver q.asIdeal := hvover
-  have heq_e : v₀.asIdeal.ramificationIdx
+  have heq_e : v₀.asIdeal.ramificationIdx'
       (NumberField.RingOfIntegers ℚ) =
-      v.asIdeal.ramificationIdx (NumberField.RingOfIntegers ℚ) :=
+      v.asIdeal.ramificationIdx' (NumberField.RingOfIntegers ℚ) :=
     Ideal.ramificationIdx_eq_of_isGaloisGroup q.asIdeal v₀.asIdeal v.asIdeal
       (L.field ≃ₐ[ℚ] L.field)
-  have heq_f : v₀.asIdeal.inertiaDeg
+  have heq_f : v₀.asIdeal.inertiaDeg'
       (NumberField.RingOfIntegers ℚ) =
-      v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) :=
+      v.asIdeal.inertiaDeg' (NumberField.RingOfIntegers ℚ) :=
     Ideal.inertiaDeg_eq_of_isGaloisGroup q.asIdeal v₀.asIdeal v.asIdeal
       (L.field ≃ₐ[ℚ] L.field)
   constructor

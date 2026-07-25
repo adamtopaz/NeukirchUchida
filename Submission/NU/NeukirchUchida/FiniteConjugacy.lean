@@ -215,6 +215,9 @@ noncomputable def regularKernelTransport
     have h := congrArg (fun z => z.1 x) h₁eq
     rw [regularKernelEmbedding_apply, regularKernelEmbedding_apply] at h
     exact h
+  letI : Finite (RegularKernelGroup N M) :=
+    Finite.of_injective (AlgEquiv.restrictScalarsHom ℚ)
+      (AlgEquiv.restrictScalarsHom_injective ℚ)
   exact MulEquiv.ofBijective forward
     ⟨hinj, (Finite.injective_iff_surjective).mp hinj⟩
 
@@ -236,6 +239,7 @@ theorem regularKernelTransport_embedding
   apply AlgEquiv.ext
   intro x
   rw [regularKernelEmbedding_apply]
+  unfold regularKernelTransport
   rfl
 
 /-- Blueprint equation `eq:tau-semilinear`: `tau` is semilinear with the
@@ -706,8 +710,7 @@ theorem finiteLevel_conjugacy
       MonoidAlgebra.single_mul_single] using hsE
   have hrel : hN * g.1 =
       (normalLevelQuotientIso theta N h₁ h₂ g).1 * hN :=
-    MonoidAlgebra.single_left_injective (R := ZMod (p : ℕ))
-      (M := N.field ≃ₐ[ℚ] N.field) one_ne_zero hsingle
+    Finsupp.single_left_injective one_ne_zero hsingle
   calc
     (normalLevelQuotientIso theta N h₁ h₂ g).1 =
         (normalLevelQuotientIso theta N h₁ h₂ g).1 * hN * hN⁻¹ := by
