@@ -671,8 +671,7 @@ private theorem completionGaloisEquivDecomposition
   let D : Subfield C := iC.fieldRange.topologicalClosure
   let eD0 : (v.valuation K).Completion ≃+* D :=
     valuedCompletionEquivClosure (v.valuation K) (algebraMap K Ω) hequiv
-  let eD : v.adicCompletion K ≃+* D :=
-    (IsDedekindDomain.HeightOneSpectrum.adicCompletion.equiv K v).trans eD0
+  let eD : v.adicCompletion K ≃+* D := eD0
   let kToD : K →+* D := iC.codRestrict D fun x =>
     Subfield.le_topologicalClosure iC.fieldRange ⟨x, rfl⟩
   letI : IsClosed (D : Set C) := Subfield.isClosed_topologicalClosure _
