@@ -32,9 +32,8 @@ instance natPrimesFact (p : Nat.Primes) : Fact (p : ℕ).Prime :=
 noncomputable def finitePlaceLocalDegree
     {K : Type*} [Field K] [NumberField K]
     (v : NU.LocalTheory.FinitePlace K) : ℕ :=
-  let q := NU.LocalTheory.restrictFinitePlace ℚ v
-  q.asIdeal.ramificationIdx' v.asIdeal *
-    q.asIdeal.inertiaDeg' v.asIdeal
+  v.asIdeal.ramificationIdx' (NumberField.RingOfIntegers ℚ) *
+    v.asIdeal.inertiaDeg' (NumberField.RingOfIntegers ℚ)
 
 /-- Density identifies the residue field of a number-field completion with
 the residue field at the original finite prime. -/
@@ -163,25 +162,26 @@ private theorem completionIsLocalField
     (v : NU.LocalTheory.FinitePlace K) :
     letI : ValuativeRel (v.adicCompletion K) := completionValuativeRel v
     IsNonarchimedeanLocalField (v.adicCompletion K) := by
-  let F := v.adicCompletion K
-  letI : ValuativeRel F := completionValuativeRel v
+  letI : ValuativeRel (v.adicCompletion K) := completionValuativeRel v
   letI : Finite ((𝓞 K) ⧸ v.asIdeal) :=
     v.asIdeal.finiteQuotientOfFreeOfNeBot v.ne_bot
-  letI : IsDiscreteValuationRing (Valued.integer F) := by
+  letI : IsDiscreteValuationRing (Valued.integer (v.adicCompletion K)) := by
     change IsDiscreteValuationRing (v.adicCompletionIntegers K)
     infer_instance
-  letI : Finite (Valued.ResidueField F) := completionResidueFinite v
-  letI : ProperSpace F :=
+  letI : Finite (Valued.ResidueField (v.adicCompletion K)) :=
+    completionResidueFinite v
+  letI : ProperSpace (v.adicCompletion K) :=
     (@Valued.integer.properSpace_iff_completeSpace_and_isDiscreteValuationRing_integer_and_finite_residueField
-      F _ _ _ _).2 ⟨inferInstance, inferInstance, inferInstance⟩
-  letI : LocallyCompactSpace F := by infer_instance
-  let vF := (Valued.v : Valuation F _)
+      (v.adicCompletion K) _ _ _ _).2 ⟨inferInstance, inferInstance, inferInstance⟩
+  letI : LocallyCompactSpace (v.adicCompletion K) := by infer_instance
+  let vF := (Valued.v : Valuation (v.adicCompletion K) _)
   letI : vF.Compatible := Valuation.Compatible.ofValuation vF
-  letI : IsValuativeTopology F :=
-    IsValuativeTopology.of_mem_nhds_zero_iff_vle vF (by
-      intro s
-      exact Valued.is_topological_valuation s)
-  letI : ValuativeRel.IsNontrivial F :=
+  letI : IsValuativeTopology (v.adicCompletion K) := by
+    apply IsValuativeTopology.of_zero
+    intro s
+    rw [Valued.is_topological_valuation s]
+    simpa using vF.exists_setOf_restrict_le_iff 0 s
+  letI : ValuativeRel.IsNontrivial (v.adicCompletion K) :=
     (ValuativeRel.isNontrivial_iff_isNontrivial vF).2 inferInstance
   exact
     { toIsValuativeTopology := inferInstance
@@ -350,20 +350,18 @@ private theorem residueCharacteristic_coprime_norm_sub_one
   letI : v.asIdeal.LiesOver q.asIdeal := ⟨rfl⟩
   have hnorm : NU.Chebotarev.PrimeIdeal.norm v =
       NU.Chebotarev.PrimeIdeal.norm q ^
-        v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) := by
+        q.asIdeal.inertiaDeg v.asIdeal := by
     exact NU.Chebotarev.PrimeIdeal.norm_pow_inertiaDeg
       v q inferInstance
   have hq : NU.Chebotarev.PrimeIdeal.norm q =
       NU.LocalTheory.residueCharacteristic v := by
     rw [← rational_residueCharacteristic_eq_norm,
       residueCharacteristic_restrictFinitePlace]
-  have hf : 0 < v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) :=
-    Ideal.inertiaDeg_pos v.asIdeal (NumberField.RingOfIntegers ℚ)
+  have hf : 0 < q.asIdeal.inertiaDeg v.asIdeal :=
+    Ideal.inertiaDeg_pos q.asIdeal v.asIdeal
   rw [hnorm, hq, ← hp]
-  have hpow : ((p : ℕ) ^
-      v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ)).Coprime
-      ((p : ℕ) ^
-        v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) - 1) :=
+  have hpow : ((p : ℕ) ^ q.asIdeal.inertiaDeg v.asIdeal).Coprime
+      ((p : ℕ) ^ q.asIdeal.inertiaDeg v.asIdeal - 1) :=
     (Nat.coprime_self_sub_right (pow_pos p.2.pos _)).2
       (Nat.coprime_one_right _)
   exact (Nat.coprime_pow_left_iff hf _ _).mp hpow
@@ -395,9 +393,7 @@ private noncomputable def rationalCompletionMap
   have hf : UniformContinuous f :=
     IsDedekindDomain.HeightOneSpectrum.uniformContinuous_algebraMap_liesOver
       ℚ K q v
-  exact (IsDedekindDomain.HeightOneSpectrum.adicCompletion.equiv K v).symm.toRingHom.comp
-    ((UniformSpace.Completion.mapRingHom f hf.continuous).comp
-      (IsDedekindDomain.HeightOneSpectrum.adicCompletion.equiv ℚ q).toRingHom)
+  exact UniformSpace.Completion.mapRingHom f hf.continuous
 
 @[simp] private theorem rationalCompletionMap_algebraMap
     {K : Type*} [Field K] [NumberField K]
@@ -412,11 +408,7 @@ private theorem continuous_rationalCompletionMap
     {K : Type*} [Field K] [NumberField K]
     (v : NU.LocalTheory.FinitePlace K) :
     Continuous (rationalCompletionMap v) := by
-  exact
-    (IsDedekindDomain.HeightOneSpectrum.adicCompletion.continuous_ofCompletion K v).comp
-      (UniformSpace.Completion.continuous_map.comp
-        (IsDedekindDomain.HeightOneSpectrum.adicCompletion.continuous_toCompletion ℚ
-          (NU.LocalTheory.restrictFinitePlace ℚ v)))
+  exact UniformSpace.Completion.continuous_map
 
 /-- The completed valuation at the restricted rational place is the
 restriction of the completed valuation at `v`. -/
@@ -473,7 +465,7 @@ private theorem rationalCompletionMap_hasExtension
   letI : v.asIdeal.LiesOver q.asIdeal := ⟨rfl⟩
   rw [← IsDedekindDomain.HeightOneSpectrum.valuation_liesOver K q v a]
   exact (pow_le_one_iff (M := ℤᵐ⁰)
-    (Ideal.IsDedekindDomain.ramificationIdx'_ne_zero_of_liesOver
+    (Ideal.IsDedekindDomain.ramificationIdx_ne_zero_of_liesOver
       v.asIdeal q.ne_bot)).symm
 
 /-- In `ℤᵐ⁰`, being strictly below one is the same as being at most
@@ -615,6 +607,8 @@ private theorem rationalCompletionIntegers_module_finite
     exact (Valuation.HasExtension.coe_algebraMap_valuationSubring_eq
       (ValuativeRel.valuation Fb) (ValuativeRel.valuation F) x).symm)
 
+set_option maxHeartbeats 800000
+
 /-- The degree of the extension of completions is the usual local degree
 of the finite place. -/
 private theorem rationalCompletion_finrank_eq_localDegree
@@ -678,15 +672,15 @@ private theorem rationalCompletion_finrank_eq_localDegree
   have hlocalCard :=
     Module.natCard_eq_pow_finrank (K := A ⧸ pA) (V := B ⧸ pB)
   have hlocalPow : NU.Chebotarev.PrimeIdeal.norm q ^
-        pA.inertiaDeg' pB = NU.Chebotarev.PrimeIdeal.norm v := by
-    rw [← hcardA, ← hcardB, Ideal.inertiaDeg'_algebraMap]
+        pA.inertiaDeg pB = NU.Chebotarev.PrimeIdeal.norm v := by
+    rw [← hcardA, ← hcardB, Ideal.inertiaDeg_algebraMap]
     exact hlocalCard.symm
   letI : v.asIdeal.LiesOver q.asIdeal := ⟨rfl⟩
   have hglobalPow : NU.Chebotarev.PrimeIdeal.norm q ^
-        q.asIdeal.inertiaDeg' v.asIdeal =
+        q.asIdeal.inertiaDeg v.asIdeal =
       NU.Chebotarev.PrimeIdeal.norm v := by
-    rw [Ideal.inertiaDeg'_eq_inertiaDeg q.asIdeal v.asIdeal]
-    exact Ideal.absNorm_pow_inertiaDeg q.asIdeal v.asIdeal
+    exact (NU.Chebotarev.PrimeIdeal.norm_pow_inertiaDeg
+      v q inferInstance).symm
   have hnormq : NU.Chebotarev.PrimeIdeal.norm q =
       NU.LocalTheory.residueCharacteristic v := by
     calc
@@ -695,8 +689,8 @@ private theorem rationalCompletion_finrank_eq_localDegree
         (rational_residueCharacteristic_eq_norm q).symm
       _ = NU.LocalTheory.residueCharacteristic v :=
         residueCharacteristic_restrictFinitePlace ℚ v
-  have hinertia : pA.inertiaDeg' pB =
-      q.asIdeal.inertiaDeg' v.asIdeal := by
+  have hinertia : pA.inertiaDeg pB =
+      q.asIdeal.inertiaDeg v.asIdeal := by
     apply Nat.pow_right_injective
       (show 2 ≤ NU.Chebotarev.PrimeIdeal.norm q by
         rw [← rational_residueCharacteristic_eq_norm,
@@ -771,9 +765,9 @@ private theorem rationalCompletion_finrank_eq_localDegree
     rw [map_zero, show vFb (πA : Fb) = WithZero.exp (-1 : ℤ) from hπFb]
       at hz
     exact WithZero.exp_ne_zero hz
-  have hramification : pA.ramificationIdx' pB =
-      q.asIdeal.ramificationIdx' v.asIdeal := by
-    let e := q.asIdeal.ramificationIdx' v.asIdeal
+  have hramification : pA.ramificationIdx pB =
+      q.asIdeal.ramificationIdx v.asIdeal := by
+    let e := q.asIdeal.ramificationIdx v.asIdeal
     let mπ : B := algebraMap A B πA
     have hmπF : (mπ : F) = rationalCompletionMap v πFb := by
       change ((algebraMap A B πA : B) : F) = _
@@ -830,12 +824,16 @@ private theorem rationalCompletion_finrank_eq_localDegree
         IsDiscreteValuationRing.coheight_pow_maximalIdeal] at hc
       have : e = e + 1 := by exact_mod_cast hc
       omega
-    exact Ideal.ramificationIdx'_spec hmap.le hnot
+    exact Ideal.ramificationIdx_spec hmap.le hnot
   have hdegree := Ideal.ramificationIdx_mul_inertiaDeg_of_isLocalRing
     (S := B) Fb F (p := pA) hpA0
   change Module.finrank Fb F = finitePlaceLocalDegree v
-  rw [← hdegree, hramification, hinertia]
+  rw [← hdegree, hramification, hinertia,
+    Ideal.ramificationIdx_eq_ramificationIdx' q.asIdeal v.asIdeal q.ne_bot,
+    Ideal.inertiaDeg_eq_inertiaDeg' q.asIdeal v.asIdeal]
   rfl
+
+set_option maxHeartbeats 200000
 
 /-- The rational place under `v` is the place indexed by its residue
 prime. -/
@@ -3109,8 +3107,8 @@ private theorem deepUnitFiltration_pPowerTorsion_spec
         PadicInt.irreducible_p
     have hpsmul : ((p : ℤ_[p]) ^ a) •
         Additive.ofMul (⟨u, hu⟩ : P) = 0 := by
-      apply (e.isUnit.smul_left_cancel).mp
-      simpa only [smul_zero, hceq, mul_smul] using hcsmul
+      rw [hceq, mul_smul] at hcsmul
+      exact e.isUnit.smul_eq_zero.mp hcsmul
     refine ⟨a, ?_⟩
     have hnsmul : ((p : ℕ) ^ a) •
         Additive.ofMul (⟨u, hu⟩ : P) = 0 := by
