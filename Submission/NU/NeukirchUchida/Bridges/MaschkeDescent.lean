@@ -56,16 +56,16 @@ private noncomputable def maschkeCyclotomicProjector
         ZMod (p : ℕ)) * ((chi d)⁻¹ : ZMod (p : ℕ)))).coeff) = _
   rw [map_sum]
   rw [Finset.sum_eq_single delta]
-  · change (MonoidAlgebra.single delta
+  · change (Finsupp.single delta
       ((↑((Units.mk0 (Nat.card Delta : ZMod (p : ℕ)) hcard)⁻¹) :
-        ZMod (p : ℕ)) * ((chi delta)⁻¹ : ZMod (p : ℕ)))).coeff delta = _
-    rw [MonoidAlgebra.coeff_single_apply, if_pos rfl]
+        ZMod (p : ℕ)) * ((chi delta)⁻¹ : ZMod (p : ℕ)))) delta = _
+    rw [Finsupp.single_eq_same]
     simp only [Units.val_inv_eq_inv_val, Units.val_mk0]
   · intro d hd hne
-    change (MonoidAlgebra.single d
+    change (Finsupp.single d
       ((↑((Units.mk0 (Nat.card Delta : ZMod (p : ℕ)) hcard)⁻¹) :
-        ZMod (p : ℕ)) * ((chi d)⁻¹ : ZMod (p : ℕ)))).coeff delta = 0
-    rw [MonoidAlgebra.coeff_single_apply, if_neg hne]
+        ZMod (p : ℕ)) * ((chi d)⁻¹ : ZMod (p : ℕ)))) delta = 0
+    rw [Finsupp.single_eq_of_ne' hne]
   · intro h
     exact (h (Finset.mem_univ delta)).elim
 
@@ -78,10 +78,15 @@ private theorem maschkeCyclotomicProjector_translate
       (chi gamma : ZMod (p : ℕ)) • maschkeCyclotomicProjector p hcard chi := by
   classical
   letI := Fintype.ofFinite Delta
+  have hcoeff (d : Delta) :
+      maschkeCyclotomicProjector p hcard chi d =
+        (Nat.card Delta : ZMod (p : ℕ))⁻¹ *
+          ((chi d)⁻¹ : ZMod (p : ℕ)) := by
+    simpa only [MonoidAlgebra.coeff] using
+      maschkeCyclotomicProjector_coeff p hcard chi d
   ext delta
-  rw [MonoidAlgebra.coeff_single_mul_apply, one_mul,
-    maschkeCyclotomicProjector_coeff, MonoidAlgebra.coeff_smul_apply,
-    maschkeCyclotomicProjector_coeff]
+  rw [MonoidAlgebra.single_mul_apply, one_mul, hcoeff,
+    MonoidAlgebra.smul_apply, hcoeff]
   change (Nat.card Delta : ZMod (p : ℕ))⁻¹ *
       (↑(chi (gamma⁻¹ * delta)) : ZMod (p : ℕ))⁻¹ =
     (chi gamma : ZMod (p : ℕ)) *
@@ -108,13 +113,12 @@ private theorem maschkeCyclotomicProjector_idempotent
       MonoidAlgebra.single d (a d) =
         a d • MonoidAlgebra.single d (1 : R) := by
     ext x
-    rw [MonoidAlgebra.coeff_smul_apply]
+    change (Finsupp.single d (a d)) x =
+      a d • (Finsupp.single d (1 : R)) x
     by_cases h : d = x
     · subst x
-      rw [MonoidAlgebra.coeff_single_apply, if_pos rfl,
-        MonoidAlgebra.coeff_single_apply, if_pos rfl, smul_eq_mul, mul_one]
-    · rw [MonoidAlgebra.coeff_single_apply, if_neg h,
-        MonoidAlgebra.coeff_single_apply, if_neg h, smul_zero]
+      rw [Finsupp.single_eq_same, Finsupp.single_eq_same, smul_eq_mul, mul_one]
+    · rw [Finsupp.single_eq_of_ne' h, Finsupp.single_eq_of_ne' h, smul_zero]
   change P * P = P
   rw [hP, Finset.sum_mul]
   calc
@@ -1032,25 +1036,26 @@ private theorem completionIsLocalField
     (v : NU.LocalTheory.FinitePlace K) :
     letI : ValuativeRel (v.adicCompletion K) := completionValuativeRel v
     IsNonarchimedeanLocalField (v.adicCompletion K) := by
-  let F := v.adicCompletion K
-  letI : ValuativeRel F := completionValuativeRel v
+  letI : ValuativeRel (v.adicCompletion K) := completionValuativeRel v
   letI : Finite ((𝓞 K) ⧸ v.asIdeal) :=
     v.asIdeal.finiteQuotientOfFreeOfNeBot v.ne_bot
-  letI : IsDiscreteValuationRing (Valued.integer F) := by
+  letI : IsDiscreteValuationRing (Valued.integer (v.adicCompletion K)) := by
     change IsDiscreteValuationRing (v.adicCompletionIntegers K)
     infer_instance
-  letI : Finite (Valued.ResidueField F) := completionResidueFinite v
-  letI : ProperSpace F :=
+  letI : Finite (Valued.ResidueField (v.adicCompletion K)) :=
+    completionResidueFinite v
+  letI : ProperSpace (v.adicCompletion K) :=
     (@Valued.integer.properSpace_iff_completeSpace_and_isDiscreteValuationRing_integer_and_finite_residueField
-      F _ _ _ _).2 ⟨inferInstance, inferInstance, inferInstance⟩
-  letI : LocallyCompactSpace F := by infer_instance
-  let vF := (Valued.v : Valuation F _)
+      (v.adicCompletion K) _ _ _ _).2 ⟨inferInstance, inferInstance, inferInstance⟩
+  letI : LocallyCompactSpace (v.adicCompletion K) := by infer_instance
+  let vF := (Valued.v : Valuation (v.adicCompletion K) _)
   letI : vF.Compatible := Valuation.Compatible.ofValuation vF
-  letI : IsValuativeTopology F :=
-    IsValuativeTopology.of_mem_nhds_zero_iff_vle vF (by
-      intro s
-      exact Valued.is_topological_valuation s)
-  letI : ValuativeRel.IsNontrivial F :=
+  letI : IsValuativeTopology (v.adicCompletion K) := by
+    apply IsValuativeTopology.of_zero
+    intro s
+    rw [Valued.is_topological_valuation s]
+    simpa using vF.exists_setOf_restrict_le_iff 0 s
+  letI : ValuativeRel.IsNontrivial (v.adicCompletion K) :=
     (ValuativeRel.isNontrivial_iff_isNontrivial vF).2 inferInstance
   exact
     { toIsValuativeTopology := inferInstance
@@ -1227,7 +1232,8 @@ private theorem pPowerMod_finrank_of_finite
       then (p : ℕ) else 1 := by
     rw [Nat.card_congr (pPowerKernelEquivRoots F p P hP)]
     split_ifs with h
-    · exact h.choose_spec.card_rootsOfUnity
+    · simpa only [Nat.card_eq_fintype_card] using
+        h.choose_spec.card_rootsOfUnity
     · letI : Subsingleton (rootsOfUnity (p : ℕ) F) :=
         ⟨fun x y => by
           have hxpow : (x.1 : Units F) ^ (p : ℕ) = 1 :=
@@ -1346,22 +1352,18 @@ private theorem residueCharacteristic_coprime_norm_sub_one
   letI : v.asIdeal.LiesOver q.asIdeal := ⟨rfl⟩
   have hnorm : NU.Chebotarev.PrimeIdeal.norm v =
       NU.Chebotarev.PrimeIdeal.norm q ^
-        v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) := by
+        q.asIdeal.inertiaDeg v.asIdeal := by
     exact NU.Chebotarev.PrimeIdeal.norm_pow_inertiaDeg
       v q inferInstance
   have hq : NU.Chebotarev.PrimeIdeal.norm q =
       NU.LocalTheory.residueCharacteristic v := by
     rw [rationalPrimeNorm_eq_residueCharacteristic,
       residueCharacteristic_restrictFinitePlace]
-  have hf : 0 <
-      v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) :=
-    Ideal.inertiaDeg_pos v.asIdeal
-      (NumberField.RingOfIntegers ℚ)
+  have hf : 0 < q.asIdeal.inertiaDeg v.asIdeal :=
+    Ideal.inertiaDeg_pos q.asIdeal v.asIdeal
   rw [hnorm, hq, ← hp]
-  have hpow : ((p : ℕ) ^
-      v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ)).Coprime
-      ((p : ℕ) ^
-        v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) - 1) :=
+  have hpow : ((p : ℕ) ^ q.asIdeal.inertiaDeg v.asIdeal).Coprime
+      ((p : ℕ) ^ q.asIdeal.inertiaDeg v.asIdeal - 1) :=
     (Nat.coprime_self_sub_right
       (pow_pos p.2.pos _)).2 (Nat.coprime_one_right _)
   exact (Nat.coprime_pow_left_iff hf _ _).mp hpow
@@ -1689,7 +1691,10 @@ private theorem localUnitAddHom_continuous
     Multiplicative.toAdd
       (units.freePrincipalUnitsEquiv (e u).2.2.2)
   have hfreeCoord : Continuous freeCoord := by
-    fun_prop
+    exact continuous_toAdd.comp
+      (units.freePrincipalUnitsEquiv.continuous.comp
+        (continuous_snd.comp (continuous_snd.comp
+          (continuous_snd.comp e.continuous))))
   let O : Set (Units F) :=
     {u | (e u).1 = 1 ∧ (e u).2.1 = 1 ∧ (e u).2.2.1 = 1 ∧
       freeCoord u ∈ S}
