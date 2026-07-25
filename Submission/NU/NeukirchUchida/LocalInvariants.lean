@@ -101,16 +101,16 @@ noncomputable def ambientRamificationIndex
     {K Omega : Type*} [Field K] [NumberField K]
     [Field Omega] [Algebra K Omega]
     (P : AmbientAbsolutePlace K Omega) : ℕ :=
-  (ambientRationalPrime P).asIdeal.ramificationIdx'
-    (ambientFinitePlace P).asIdeal
+  (ambientFinitePlace P).asIdeal.ramificationIdx'
+    (NumberField.RingOfIntegers ℚ)
 
 /-- Absolute residue degree of an ambient place over `ℚ`. -/
 noncomputable def ambientResidueDegree
     {K Omega : Type*} [Field K] [NumberField K]
     [Field Omega] [Algebra K Omega]
     (P : AmbientAbsolutePlace K Omega) : ℕ :=
-  (ambientRationalPrime P).asIdeal.inertiaDeg'
-    (ambientFinitePlace P).asIdeal
+  (ambientFinitePlace P).asIdeal.inertiaDeg'
+    (NumberField.RingOfIntegers ℚ)
 
 /-- Cardinality of the finite residue field at an ambient place. -/
 noncomputable def ambientResidueNorm
@@ -2977,30 +2977,35 @@ private theorem completionIsLocalField
     (v : NU.LocalTheory.FinitePlace K) :
     letI : ValuativeRel (v.adicCompletion K) := completionValuativeRel v
     IsNonarchimedeanLocalField (v.adicCompletion K) := by
-  let F := v.adicCompletion K
-  letI : ValuativeRel F := completionValuativeRel v
+  letI : ValuativeRel (v.adicCompletion K) := completionValuativeRel v
   letI : Finite ((𝓞 K) ⧸ v.asIdeal) :=
     v.asIdeal.finiteQuotientOfFreeOfNeBot v.ne_bot
-  letI : IsDiscreteValuationRing (Valued.integer F) := by
+  letI : IsDiscreteValuationRing
+      (Valued.integer (v.adicCompletion K)) := by
     change IsDiscreteValuationRing (v.adicCompletionIntegers K)
     infer_instance
-  letI : Finite (Valued.ResidueField F) := completionResidueFinite v
-  letI : ProperSpace F :=
+  letI : Finite (Valued.ResidueField (v.adicCompletion K)) :=
+    completionResidueFinite v
+  letI : ProperSpace (v.adicCompletion K) :=
     (@Valued.integer.properSpace_iff_completeSpace_and_isDiscreteValuationRing_integer_and_finite_residueField
-      F _ _ _ _).2 ⟨inferInstance, inferInstance, inferInstance⟩
-  letI : LocallyCompactSpace F := by infer_instance
-  let vF := (Valued.v : Valuation F _)
+      (v.adicCompletion K) _ _ _ _).2
+        ⟨inferInstance, inferInstance, inferInstance⟩
+  letI : LocallyCompactSpace (v.adicCompletion K) := by infer_instance
+  let vF := (Valued.v : Valuation (v.adicCompletion K) _)
   letI : vF.Compatible := Valuation.Compatible.ofValuation vF
-  letI : IsValuativeTopology F :=
-    IsValuativeTopology.of_mem_nhds_zero_iff_vle vF (by
-      intro s
-      exact Valued.is_topological_valuation s)
-  letI : ValuativeRel.IsNontrivial F :=
+  letI : IsValuativeTopology (v.adicCompletion K) := by
+    apply IsValuativeTopology.of_zero
+    intro s
+    rw [Valued.is_topological_valuation s]
+    simpa using vF.exists_setOf_restrict_le_iff 0 s
+  letI : ValuativeRel.IsNontrivial (v.adicCompletion K) :=
     (ValuativeRel.isNontrivial_iff_isNontrivial vF).2 inferInstance
   exact
     { toIsValuativeTopology := inferInstance
       toLocallyCompactSpace := inferInstance
       toIsNontrivial := inferInstance }
+
+universe u v
 
 private theorem ringChar_eq_of_fieldHom
     {k : Type u} {l : Type v} [Field k] [Field l] (f : k →+* l) :
@@ -3470,12 +3475,11 @@ private theorem finiteExtension_localFieldStructure
   letI : TopologicalSpace E := tE
   letI : Valued E NNReal := NormedField.toValued
   haveI htop : IsValuativeTopology E := by
-    apply IsValuativeTopology.of_mem_nhds_zero_iff_vle
-      (NormedField.valuation (K := E))
-    have hv : (Valued.v : Valuation E NNReal) =
-        NormedField.valuation := rfl
-    rw [← hv]
-    exact Valued.is_topological_valuation
+    apply IsValuativeTopology.of_zero
+    intro s
+    rw [Valued.is_topological_valuation s]
+    simpa using
+      (Valued.v : Valuation E NNReal).exists_setOf_restrict_le_iff 0 s
   haveI hloc : LocallyCompactSpace E :=
     LocallyCompactSpace.of_finiteDimensional_of_complete F E
   haveI hnontriv : ValuativeRel.IsNontrivial E := by
@@ -3770,22 +3774,20 @@ private theorem residueCharacteristic_coprime_norm_sub_one
   letI : v.asIdeal.LiesOver q.asIdeal := ⟨rfl⟩
   have hnorm : NU.Chebotarev.PrimeIdeal.norm v =
       NU.Chebotarev.PrimeIdeal.norm q ^
-        v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) := by
+        q.asIdeal.inertiaDeg v.asIdeal := by
     exact NU.Chebotarev.PrimeIdeal.norm_pow_inertiaDeg
       v q inferInstance
   have hq : NU.Chebotarev.PrimeIdeal.norm q =
       NU.LocalTheory.residueCharacteristic v := by
     rw [rationalPrimeNorm_eq_residueCharacteristic,
       NU.NeukirchUchida.LocalInvariants.residueCharacteristic_restrictFinitePlace]
-  have hf : 0 <
-      v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) :=
-    Ideal.inertiaDeg_pos v.asIdeal
-      (NumberField.RingOfIntegers ℚ)
+  have hf : 0 < q.asIdeal.inertiaDeg v.asIdeal :=
+    Ideal.inertiaDeg_pos q.asIdeal v.asIdeal
   rw [hnorm, hq]
   have hpow : (NU.LocalTheory.residueCharacteristic v ^
-      v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ)).Coprime
+      q.asIdeal.inertiaDeg v.asIdeal).Coprime
       (NU.LocalTheory.residueCharacteristic v ^
-        v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) - 1) :=
+        q.asIdeal.inertiaDeg v.asIdeal - 1) :=
     (Nat.coprime_self_sub_right
       (pow_pos
         (NU.NeukirchUchida.LocalInvariants.residueCharacteristic_prime v).pos
@@ -3803,9 +3805,8 @@ private noncomputable def ambientLocalDegree
 private noncomputable def finitePlaceLocalDegree
     {K : Type*} [Field K] [NumberField K]
     (v : NU.LocalTheory.FinitePlace K) : ℕ :=
-  let p := NU.LocalTheory.restrictFinitePlace ℚ v
-  p.asIdeal.ramificationIdx' v.asIdeal *
-    p.asIdeal.inertiaDeg' v.asIdeal
+  v.asIdeal.ramificationIdx' (NumberField.RingOfIntegers ℚ) *
+    v.asIdeal.inertiaDeg' (NumberField.RingOfIntegers ℚ)
 
 /-- In a commutative group, the subgroup of `p`-power torsion is
 `ell`-divisible for distinct primes `p` and `ell`. -/
@@ -4623,7 +4624,8 @@ private theorem pPowerMod_finrank_of_finite
       then (p : ℕ) else 1 := by
     rw [Nat.card_congr (pPowerKernelEquivRoots F p P hP)]
     split_ifs with h
-    · exact h.choose_spec.card_rootsOfUnity
+    · simpa only [Nat.card_eq_fintype_card] using
+        h.choose_spec.card_rootsOfUnity
     · letI : Subsingleton (rootsOfUnity (p : ℕ) F) :=
         ⟨fun x y => by
           have hxpow : (x.1 : Units F) ^ (p : ℕ) = 1 :=
@@ -5859,7 +5861,8 @@ private theorem odd_kummer_raw
       (ringChar.eq_iff).mp hringChar
     letI : P.asIdeal.LiesOver v.asIdeal := hPv
     have hnormPcoprime : (Ideal.absNorm P.asIdeal).Coprime (lambda : ℕ) := by
-      rw [← Ideal.absNorm_pow_inertiaDeg v.asIdeal P.asIdeal]
+      rw [Ideal.absNorm_eq_pow_inertiaDeg_of_liesOver
+        P.asIdeal v.asIdeal inferInstance v.ne_bot]
       change (NU.Chebotarev.PrimeIdeal.norm v ^ _).Coprime (lambda : ℕ)
       rw [norm_eq_residueCharacteristic_rat]
       exact ((Nat.coprime_primes
@@ -6294,10 +6297,12 @@ private theorem no_square_in_twoPower_cyclotomic_of_oddFactor
     have hpdiv2 : (p : ℕ) ∣ 2 :=
       p.2.dvd_of_dvd_pow (by simpa [N] using hdiv)
     exact hp2 ((Nat.prime_dvd_prime_iff_eq p.2 Nat.prime_two).mp hpdiv2)
-  have he : q.ramificationIdx' P = 1 := by
-    rw [Ideal.ramificationIdx'_eq_ramificationIdx q P hq0]
-    exact IsCyclotomicExtension.Rat.ramificationIdx_eq_of_not_dvd
+  have he : P.ramificationIdx' ℤ = 1 :=
+    IsCyclotomicExtension.Rat.ramificationIdx_eq_of_not_dvd
       (p : ℕ) F P hpdvd
+  have he' : q.ramificationIdx P = 1 := by
+    rw [Ideal.ramificationIdx_eq_ramificationIdx' q P hq0]
+    exact he
   have hmult : multiplicity q (Ideal.span {((b : ℕ) : ℤ)}) =
       b.factorization (p : ℕ) := by
     simpa [q] using
@@ -6317,7 +6322,7 @@ private theorem no_square_in_twoPower_cyclotomic_of_oddFactor
   have hvb : w.valuation F (algebraMap ℚ F b) =
       WithZero.exp (-(b.factorization (p : ℕ) : ℤ)) := by
     have hlie := v.intValuation_liesOver w (b : ℤ)
-    rw [he, pow_one] at hlie
+    rw [he', pow_one] at hlie
     calc
       w.valuation F (algebraMap ℚ F b) =
           w.intValuation (algebraMap ℤ
@@ -6934,7 +6939,8 @@ private theorem twoPrime_exceptional_kummer_raw
       (ringChar.eq_iff).mp hringChar
     letI : P.asIdeal.LiesOver v.asIdeal := hPv
     have hnormPcoprime : (Ideal.absNorm P.asIdeal).Coprime 2 := by
-      rw [← Ideal.absNorm_pow_inertiaDeg v.asIdeal P.asIdeal]
+      rw [Ideal.absNorm_eq_pow_inertiaDeg_of_liesOver
+        P.asIdeal v.asIdeal inferInstance v.ne_bot]
       change (NU.Chebotarev.PrimeIdeal.norm v ^ _).Coprime 2
       rw [norm_eq_residueCharacteristic_rat]
       exact ((Nat.coprime_primes
@@ -8263,8 +8269,8 @@ theorem ambientResidueNorm_eq_pow
   rw [ambientResidueNorm, ambientResidueDegree]
   change NU.Chebotarev.PrimeIdeal.norm v =
     NU.Chebotarev.PrimeIdeal.norm q ^
-      q.asIdeal.inertiaDeg' v.asIdeal
-  rw [Ideal.inertiaDeg'_eq_inertiaDeg]
+      v.asIdeal.inertiaDeg' (NumberField.RingOfIntegers ℚ)
+  rw [← Ideal.inertiaDeg_eq_inertiaDeg' q.asIdeal v.asIdeal]
   exact NU.Chebotarev.PrimeIdeal.norm_pow_inertiaDeg v q inferInstance
 
 /-! ### Ambient assembly: `cor:chi`, `prop:inertia`, `prop:q`, and `lem:bridge` -/
@@ -8619,8 +8625,8 @@ private theorem finiteLevel_relativeDegree_eq_index
     let L := NU.LocalTheory.galoisLevelOfOpenNormal K N
     let v := ambientFinitePlace P
     let w := ambientFinitePlace (finiteLevelAbsolutePlace P N)
-    v.asIdeal.ramificationIdx' w.asIdeal *
-        v.asIdeal.inertiaDeg' w.asIdeal =
+    w.asIdeal.ramificationIdx' (NumberField.RingOfIntegers K) *
+        w.asIdeal.inertiaDeg' (NumberField.RingOfIntegers K) =
       (Subgroup.comap
         (NU.LocalTheory.absoluteDecompositionGroup K P.1).subtype
         N.toSubgroup).index := by
@@ -8646,16 +8652,13 @@ private theorem finiteLevel_relativeDegree_eq_index
       apply IsDedekindDomain.HeightOneSpectrum.ext
       exact h
   have hcard : Nat.card (NU.LocalTheory.decompositionGroup K w) =
-      v.asIdeal.ramificationIdx' w.asIdeal *
-        v.asIdeal.inertiaDeg' w.asIdeal := by
+      w.asIdeal.ramificationIdx' (NumberField.RingOfIntegers K) *
+        w.asIdeal.inertiaDeg' (NumberField.RingOfIntegers K) := by
     rw [hdecomp, Ideal.card_stabilizer_eq v.asIdeal w.asIdeal,
       Ideal.ramificationIdxIn_eq_ramificationIdx
         v.asIdeal w.asIdeal (L.field ≃ₐ[K] L.field),
       Ideal.inertiaDegIn_eq_inertiaDeg
-        v.asIdeal w.asIdeal (L.field ≃ₐ[K] L.field),
-      ← Ideal.ramificationIdx_eq_ramificationIdx'
-        v.asIdeal w.asIdeal v.ne_bot,
-      ← Ideal.inertiaDeg'_eq_inertiaDeg v.asIdeal w.asIdeal]
+        v.asIdeal w.asIdeal (L.field ≃ₐ[K] L.field)]
   let r : D →* (L.field ≃ₐ[K] L.field) :=
     (NU.LocalTheory.absoluteRestriction L).comp D.subtype
   have hker : r.ker = U := by
@@ -8679,8 +8682,8 @@ private theorem finiteLevel_relativeDegree_eq_index
     exact congrArg (NU.LocalTheory.decompositionGroup K)
       (ambientFinitePlace_finiteLevelAbsolutePlace P N).symm
   calc
-    v.asIdeal.ramificationIdx' w.asIdeal *
-        v.asIdeal.inertiaDeg' w.asIdeal =
+    w.asIdeal.ramificationIdx' (NumberField.RingOfIntegers K) *
+        w.asIdeal.inertiaDeg' (NumberField.RingOfIntegers K) =
         Nat.card (NU.LocalTheory.decompositionGroup K w) := hcard.symm
     _ = Nat.card r.range := by rw [hrange, himage]
     _ = r.ker.index := (Subgroup.index_ker r).symm
@@ -8720,21 +8723,20 @@ private theorem finiteLevel_localDegree_eq_index_mul
   letI : v.asIdeal.LiesOver q.asIdeal := by
     constructor
     rfl
-  have hrel : v.asIdeal.ramificationIdx' w.asIdeal *
-      v.asIdeal.inertiaDeg' w.asIdeal =
+  have hrel : w.asIdeal.ramificationIdx' (NumberField.RingOfIntegers K) *
+      w.asIdeal.inertiaDeg' (NumberField.RingOfIntegers K) =
         (Subgroup.comap
           (NU.LocalTheory.absoluteDecompositionGroup K P.1).subtype
           N.toSubgroup).index :=
     finiteLevel_relativeDegree_eq_index (K := K) P N
   have htower : finitePlaceLocalDegree w =
       finitePlaceLocalDegree v *
-        (v.asIdeal.ramificationIdx' w.asIdeal *
-          v.asIdeal.inertiaDeg' w.asIdeal) := by
+        (w.asIdeal.ramificationIdx' (NumberField.RingOfIntegers K) *
+          w.asIdeal.inertiaDeg' (NumberField.RingOfIntegers K)) := by
+    letI := Localization.AtPrime.algebraOfLiesOver v.asIdeal w.asIdeal
     unfold finitePlaceLocalDegree
-    dsimp only
-    rw [hq,
-      Ideal.ramificationIdx'_algebra_tower' q.asIdeal v.asIdeal w.asIdeal,
-      Ideal.inertiaDeg'_algebra_tower q.asIdeal v.asIdeal w.asIdeal]
+    rw [Ideal.ramificationIdx'_tower' v.asIdeal w.asIdeal,
+      Ideal.inertiaDeg'_tower v.asIdeal w.asIdeal]
     ring
   change finitePlaceLocalDegree w =
     (Subgroup.comap
@@ -10388,19 +10390,55 @@ private theorem additive_power_exponent_eq_primePower
     simp only [Polynomial.eval_pow, Polynomial.eval_add,
       Polynomial.eval_X, Polynomial.eval_one]
     simpa using hadd x 1
-  refine ⟨multiplicity p N,
-    Choose.eq_pow_multiplicity_of_choose_modEq_zero_nat
-      (Nat.pos_of_ne_zero hN) ?_⟩
-  intro i hi
-  have hi' : 1 ≤ i ∧ i ≤ N - 1 := Finset.mem_Icc.mp hi
-  have hiN : i < N := by omega
-  have hc := congrArg (fun f : Polynomial F => f.coeff i) hpoly
-  rw [Polynomial.coeff_X_add_one_pow, Polynomial.coeff_add,
-    Polynomial.coeff_X_pow, Polynomial.coeff_one,
-    if_neg (ne_of_lt hiN), if_neg (by omega : i ≠ 0)] at hc
-  simp only [add_zero] at hc
-  rw [Nat.modEq_zero_iff_dvd]
-  exact (CharP.cast_eq_zero_iff F p (N.choose i)).mp hc
+  have hp : p.Prime := Fact.out
+  have aux : ∀ n : ℕ, n ≠ 0 →
+      (∀ z w : F, (z + w) ^ n = z ^ n + w ^ n) →
+      ∃ a : ℕ, n = p ^ a := by
+    intro n
+    induction n using Nat.strong_induction_on with
+    | h n ih =>
+      intro hn haddn
+      by_cases hn1 : n = 1
+      · exact ⟨0, by simp [hn1]⟩
+      have hngt : 1 < n :=
+        (Nat.one_le_iff_ne_zero.mpr hn).lt_of_ne (Ne.symm hn1)
+      have hpolyn : (Polynomial.X + 1 : Polynomial F) ^ n =
+          Polynomial.X ^ n + 1 := by
+        apply Polynomial.funext
+        intro x
+        simp only [Polynomial.eval_pow, Polynomial.eval_add,
+          Polynomial.eval_X, Polynomial.eval_one]
+        simpa using haddn x 1
+      have hpdvd : p ∣ n := by
+        have hc := congrArg (fun f : Polynomial F => f.coeff 1) hpolyn
+        rw [Polynomial.coeff_X_add_one_pow, Polynomial.coeff_add,
+          Polynomial.coeff_X_pow, Polynomial.coeff_one,
+          if_neg (by omega : 1 ≠ n), if_neg one_ne_zero] at hc
+        simp only [Nat.choose_one_right, add_zero] at hc
+        exact (CharP.cast_eq_zero_iff F p n).mp hc
+      obtain ⟨m, rfl⟩ := hpdvd
+      have hm0 : m ≠ 0 := by
+        intro hm
+        simp [hm] at hn
+      have hmp : m < p * m := by
+        nlinarith [hp.two_le]
+      have haddm : ∀ z w : F,
+          (z + w) ^ m = z ^ m + w ^ m := by
+        intro z w
+        apply frobenius_inj F p
+        change ((z + w) ^ m) ^ p = (z ^ m + w ^ m) ^ p
+        rw [add_pow_char (z ^ m) (w ^ m) p]
+        simp only [← pow_mul]
+        simpa [Nat.mul_comm] using haddn z w
+      obtain ⟨a, ha⟩ := ih m hmp hm0 haddm
+      exact ⟨a + 1, by
+        rw [ha, pow_succ]
+        exact Nat.mul_comm _ _⟩
+  obtain ⟨a, ha⟩ := aux N hN hadd
+  refine ⟨multiplicity p N, ?_⟩
+  rw [ha, Nat.multiplicity_eq_factorization hp
+    (pow_ne_zero _ hp.ne_zero), Nat.factorization_pow]
+  simp [hp.factorization]
 
 /-- **Arithmetic micro-obligation, Blueprint `lem:bridge`.**  On the actual
 absolute residue tower, additivity of the power map (equivalently Lucas's
@@ -10584,7 +10622,8 @@ private theorem actsAsPowerOnResidue_iff_coordinate_nat
       let v := ambientFinitePlace P
       let p := ambientRationalPrime P
       letI : v.asIdeal.LiesOver p.asIdeal := ⟨rfl⟩
-      exact (Ideal.inertiaDeg'_pos p.asIdeal v.asIdeal).ne'
+      exact (Ideal.inertiaDeg'_pos v.asIdeal
+        (NumberField.RingOfIntegers ℚ)).ne'
     have hcoordinate : D.coordinate g = profiniteIntegerOfNat j := by
       apply profiniteIntegerOfNat_mul_injective hf
       calc
@@ -10709,7 +10748,8 @@ private theorem ambientUnramifiedLocalData_exists
     let v := ambientFinitePlace P₁
     let p := ambientRationalPrime P₁
     letI : v.asIdeal.LiesOver p.asIdeal := ⟨rfl⟩
-    exact (Ideal.inertiaDeg'_pos p.asIdeal v.asIdeal).ne'
+    exact (Ideal.inertiaDeg'_pos v.asIdeal
+      (NumberField.RingOfIntegers ℚ)).ne'
   have htheta (g : G₁)
       (hg : g ∈ NU.LocalTheory.ambientDecompositionGroup
         (G := G₁) P₁.1) :
@@ -10919,7 +10959,8 @@ private theorem ambientResidueDegree_pos
   let v := ambientFinitePlace P
   let p := ambientRationalPrime P
   letI : v.asIdeal.LiesOver p.asIdeal := ⟨rfl⟩
-  exact Ideal.inertiaDeg'_pos p.asIdeal v.asIdeal
+  exact Ideal.inertiaDeg'_pos v.asIdeal
+    (NumberField.RingOfIntegers ℚ)
 
 /-- Blueprint `prop:q`, formal `zhat`-linear conclusion.  Given the
 unramified transport data, it proves `f = f'`, `q = q'`, `u = 1`, and equality
