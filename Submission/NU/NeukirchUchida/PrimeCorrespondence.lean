@@ -819,6 +819,11 @@ private theorem primeTransportSet_nonempty
   letI : Qn.LiesOver p := hQover
   letI : IsGalois F.field N.field :=
     IsGalois.tower_top_of_isGalois ℚ F.field N.field
+  letI : FiniteDimensional F.field N.field :=
+    Module.Finite.of_restrictScalars_finite ℚ F.field N.field
+  letI : Finite (N.field →ₐ[F.field] N.field) :=
+    Finite.algHom F.field N.field N.field
+  letI : Finite (N.field ≃ₐ[F.field] N.field) := Finite.algEquiv
   obtain ⟨sigma, hsigma⟩ := Ideal.exists_smul_eq_of_isGaloisGroup
     p Pn Qn (N.field ≃ₐ[F.field] N.field)
   have hplace : NU.LocalTheory.conjugateFinitePlace F.field sigma
@@ -1115,6 +1120,11 @@ theorem degreeOne_iff_rationalDecompositionGroup_le
     rfl
   letI : IsGalois F.field N.field :=
     IsGalois.tower_top_of_isGalois ℚ F.field N.field
+  letI : FiniteDimensional F.field N.field :=
+    Module.Finite.of_restrictScalars_finite ℚ F.field N.field
+  letI : Finite (N.field →ₐ[F.field] N.field) :=
+    Finite.algHom F.field N.field N.field
+  letI : Finite (N.field ≃ₐ[F.field] N.field) := Finite.algEquiv
   have hwv : w.asIdeal.LiesOver v.asIdeal := ⟨by
     change v.asIdeal = (NU.LocalTheory.restrictFinitePlace F.field w).asIdeal
     exact congrArg HeightOneSpectrum.asIdeal
@@ -1125,20 +1135,16 @@ theorem degreeOne_iff_rationalDecompositionGroup_le
   letI : w.asIdeal.LiesOver v.asIdeal := hwv
   letI : v.asIdeal.LiesOver q.asIdeal := hvq
   letI : w.asIdeal.LiesOver q.asIdeal := hwq
+  letI := Localization.AtPrime.algebraOfLiesOver v.asIdeal w.asIdeal
   let Dq := MulAction.stabilizer (N.field ≃ₐ[ℚ] N.field) w.asIdeal
   let Df := MulAction.stabilizer (N.field ≃ₐ[F.field] N.field) w.asIdeal
   have he : absoluteRamificationIndex F v =
-      v.asIdeal.ramificationIdx (NumberField.RingOfIntegers ℚ) := by
-    change q.asIdeal.ramificationIdx' v.asIdeal = _
-    exact Ideal.ramificationIdx'_eq_ramificationIdx q.asIdeal v.asIdeal
-      q.ne_bot
+      v.asIdeal.ramificationIdx' (NumberField.RingOfIntegers ℚ) := rfl
   have hf : absoluteResidueDegree F v =
-      v.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) := by
-    change q.asIdeal.inertiaDeg' v.asIdeal = _
-    exact Ideal.inertiaDeg'_eq_inertiaDeg q.asIdeal v.asIdeal
+      v.asIdeal.inertiaDeg' (NumberField.RingOfIntegers ℚ) := rfl
   have hcardq : Nat.card Dq =
-      w.asIdeal.ramificationIdx (NumberField.RingOfIntegers ℚ) *
-        w.asIdeal.inertiaDeg (NumberField.RingOfIntegers ℚ) := by
+      w.asIdeal.ramificationIdx' (NumberField.RingOfIntegers ℚ) *
+        w.asIdeal.inertiaDeg' (NumberField.RingOfIntegers ℚ) := by
     calc
       Nat.card Dq = q.asIdeal.ramificationIdxIn
           (NumberField.RingOfIntegers N.field) *
@@ -1150,8 +1156,8 @@ theorem degreeOne_iff_rationalDecompositionGroup_le
           Ideal.inertiaDegIn_eq_inertiaDeg q.asIdeal w.asIdeal
             (N.field ≃ₐ[ℚ] N.field)]
   have hcardf : Nat.card Df =
-      w.asIdeal.ramificationIdx (NumberField.RingOfIntegers F.field) *
-        w.asIdeal.inertiaDeg (NumberField.RingOfIntegers F.field) := by
+      w.asIdeal.ramificationIdx' (NumberField.RingOfIntegers F.field) *
+        w.asIdeal.inertiaDeg' (NumberField.RingOfIntegers F.field) := by
     calc
       Nat.card Df = v.asIdeal.ramificationIdxIn
           (NumberField.RingOfIntegers N.field) *
@@ -1164,8 +1170,8 @@ theorem degreeOne_iff_rationalDecompositionGroup_le
             (N.field ≃ₐ[F.field] N.field)]
   have hcard : Nat.card Dq = absoluteLocalDegree F v * Nat.card Df := by
     rw [hcardq, hcardf, absoluteLocalDegree, he, hf,
-      Ideal.ramificationIdx_tower v.asIdeal w.asIdeal,
-      Ideal.inertiaDeg_tower v.asIdeal w.asIdeal]
+      Ideal.ramificationIdx'_tower' v.asIdeal w.asIdeal,
+      Ideal.inertiaDeg'_tower v.asIdeal w.asIdeal]
     ring
   let inc : Df → Dq := fun sigma =>
     ⟨sigma.1.restrictScalars ℚ, by
