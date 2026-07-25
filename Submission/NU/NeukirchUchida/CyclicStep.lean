@@ -566,12 +566,13 @@ private theorem absoluteNorm_eq_of_degreeOne
     refine ⟨absoluteRamificationIndex F v, ?_⟩
     rw [Nat.mul_comm]
     exact hdegree.symm
-  have hf' : v.asIdeal.inertiaDeg (𝓞 ℚ) = 1 := by
-    change (rationalPrime F v).asIdeal.inertiaDeg' v.asIdeal = 1 at hf
-    rw [hqv, Ideal.inertiaDeg'_eq_inertiaDeg] at hf
-    exact hf
-  have hnorm := Ideal.absNorm_pow_inertiaDeg q.asIdeal v.asIdeal
-  rw [hf', pow_one] at hnorm
+  have hf' : v.asIdeal.inertiaDeg' (𝓞 ℚ) = 1 := hf
+  have hf'' : q.asIdeal.inertiaDeg v.asIdeal = 1 := by
+    rw [Ideal.inertiaDeg_eq_inertiaDeg' q.asIdeal v.asIdeal]
+    exact hf'
+  have hnorm := (Ideal.absNorm_eq_pow_inertiaDeg_of_liesOver
+    v.asIdeal q.asIdeal inferInstance q.ne_bot).symm
+  rw [hf'', pow_one] at hnorm
   calc
     Nat.card (𝓞 ℚ ⧸ q.asIdeal) = Ideal.absNorm q.asIdeal := by
       rw [Ideal.absNorm_apply, Submodule.cardQuot_apply]
@@ -622,6 +623,7 @@ private theorem normalizedLift_isArithFrobAt_finite
   congr 1
   exact finiteQuotientMap_apply F N hFN psi.1 (a : N.field)
 
+set_option maxHeartbeats 800000 in
 /-- Fallback seam for the infinite local prolongation/normalized-lift step.
 The global Chebotarev choice is proved in `degreeOneFrobeniusConstruction`
 below; only this local passage from an exact finite Frobenius remains in the
@@ -724,10 +726,11 @@ private theorem finitePrimeFrobeniusLiftingConstruction :
       IsUnramifiedAbove (extensionOfLE F N hFN) v := by
     refine ⟨⟨w, hwv⟩, ?_⟩
     intro w' hw'v
-    letI : w'.asIdeal.LiesOver v.asIdeal := ⟨by
+    have hover : w'.asIdeal.LiesOver v.asIdeal := ⟨by
       change v.asIdeal =
         (NU.LocalTheory.restrictFinitePlace F.field w').asIdeal
       rw [hw'v]⟩
+    letI : w'.asIdeal.LiesOver v.asIdeal := hover
     letI : v.asIdeal.LiesOver q.asIdeal := ⟨by
       exact congrArg IsDedekindDomain.HeightOneSpectrum.asIdeal hqv.symm⟩
     have hw'q : w'.asIdeal.LiesOver q.asIdeal :=
@@ -738,10 +741,12 @@ private theorem finitePrimeFrobeniusLiftingConstruction :
     have hunrF : Algebra.IsUnramifiedAt (𝓞 F.field) w'.asIdeal :=
       Algebra.IsUnramifiedAt.of_restrictScalars (𝓞 ℚ) w'.asIdeal
     letI : Algebra.IsUnramifiedAt (𝓞 F.field) w'.asIdeal := hunrF
-    change v.asIdeal.ramificationIdx' w'.asIdeal = 1
-    rw [Ideal.ramificationIdx'_eq_ramificationIdx
+    change w'.asIdeal.ramificationIdx' (𝓞 F.field) = 1
+    rw [← Ideal.ramificationIdx_eq_ramificationIdx'
       v.asIdeal w'.asIdeal v.ne_bot]
-    exact Ideal.ramificationIdx_eq_one_of_isUnramifiedAt
+    have hu := (Algebra.isUnramifiedAt_iff_of_isDedekindDomain
+      w'.ne_bot).mp hunrF
+    simpa [← hover.over] using hu
   have hcard : Nat.card (𝓞 ℚ ⧸ w.asIdeal.under (𝓞 ℚ)) =
       NU.Chebotarev.PrimeIdeal.norm v := by
     rw [← hwq.over]
