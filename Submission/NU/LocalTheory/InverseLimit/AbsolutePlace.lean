@@ -1130,23 +1130,23 @@ private theorem exists_local_klein_level
   have hαE : αE ^ 2 = algebraMap K E πK := by
     apply Subtype.ext
     exact hαeq
-  have he_ne_one : p.ramificationIdx' w.asIdeal ≠ 1 := by
+  have he_ne_one : w.asIdeal.ramificationIdx' (𝓞 K) ≠ 1 := by
     intro he
     have hlie := v.valuation_liesOver E w πK
+    have he' : p.ramificationIdx w.asIdeal = 1 := by
+      rw [Ideal.ramificationIdx_eq_ramificationIdx' p w.asIdeal v.ne_bot]
+      exact he
     have hπw : w.valuation E (algebraMap K E πK) =
         WithZero.exp (-1 : ℤ) := by
-      rw [he, pow_one, hπK] at hlie
+      rw [he', pow_one, hπK] at hlie
       exact hlie.symm
     have hαval : (w.valuation E αE) ^ 2 = WithZero.exp (-1 : ℤ) := by
       rw [← hπw, ← hαE]
       exact (map_pow (w.valuation E) αE 2).symm
     exact square_ne_exp_neg_one (w.valuation E αE) hαval
-  have he_pos : 0 < p.ramificationIdx' w.asIdeal :=
-    Nat.pos_of_ne_zero
-      (Ideal.IsDedekindDomain.ramificationIdx'_ne_zero_of_liesOver
-        w.asIdeal v.ne_bot)
-  have he : 2 ≤ w.asIdeal.ramificationIdx (𝓞 K) := by
-    rw [← Ideal.ramificationIdx'_eq_ramificationIdx p w.asIdeal v.ne_bot]
+  have he_pos : 0 < w.asIdeal.ramificationIdx' (𝓞 K) :=
+    Ideal.ramificationIdx'_pos w.asIdeal (𝓞 K)
+  have he : 2 ≤ w.asIdeal.ramificationIdx' (𝓞 K) := by
     omega
   let βE : E :=
     ⟨β, IntermediateField.subset_adjoin K ({α, β} : Set _) (by simp)⟩
@@ -1194,14 +1194,15 @@ private theorem exists_local_klein_level
   have hfres : 2 ≤ Module.finrank k kE := by
     rw [hkres] at hktower
     omega
-  have hf : 2 ≤ w.asIdeal.inertiaDeg (𝓞 K) := by
-    rw [Ideal.inertiaDeg_eq_of_isMaximal p w.asIdeal]
+  have hf : 2 ≤ w.asIdeal.inertiaDeg' (𝓞 K) := by
+    rw [← Ideal.inertiaDeg_eq_inertiaDeg' p w.asIdeal,
+      Ideal.inertiaDeg_algebraMap]
     exact hfres
   let G := E ≃ₐ[K] E
   have hcardstab :
       Nat.card (MulAction.stabilizer G w.asIdeal) =
-        w.asIdeal.ramificationIdx (𝓞 K) *
-          w.asIdeal.inertiaDeg (𝓞 K) := by
+        w.asIdeal.ramificationIdx' (𝓞 K) *
+          w.asIdeal.inertiaDeg' (𝓞 K) := by
     rw [Ideal.card_stabilizer_eq p w.asIdeal,
       Ideal.ramificationIdxIn_eq_ramificationIdx p w.asIdeal G,
       Ideal.inertiaDegIn_eq_inertiaDeg p w.asIdeal G]
